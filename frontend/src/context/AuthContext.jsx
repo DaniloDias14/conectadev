@@ -1,42 +1,54 @@
-"use client"
+"use client";
 
-import { createContext, useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { createContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-export const AuthContext = createContext()
+export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [usuario = null, setUsuario] = useState(null)
-  const [token = null, setToken] = useState(null)
-  const [carregando, setCarregando] = useState(true)
-  const navigate = useNavigate()
+  const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const tokenArmazenado = localStorage.getItem("accessToken")
-    const usuarioArmazenado = localStorage.getItem("usuario")
+    const tokenArmazenado = localStorage.getItem("accessToken");
+    const usuarioArmazenado = localStorage.getItem("usuario");
 
     if (tokenArmazenado && usuarioArmazenado) {
-      setToken(tokenArmazenado)
-      setUsuario(JSON.parse(usuarioArmazenado))
+      try {
+        const usuarioParsed = JSON.parse(usuarioArmazenado);
+        setToken(tokenArmazenado);
+        setUsuario(usuarioParsed);
+      } catch (err) {
+        console.error("Erro ao parsear usuário armazenado:", err);
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("usuario");
+      }
     }
 
-    setCarregando(false)
-  }, [])
+    setCarregando(false);
+  }, []);
 
   const login = (usuarioData, accessToken) => {
-    setUsuario(usuarioData)
-    setToken(accessToken)
-    localStorage.setItem("accessToken", accessToken)
-    localStorage.setItem("usuario", JSON.stringify(usuarioData))
-  }
+    setUsuario(usuarioData);
+    setToken(accessToken);
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("usuario", JSON.stringify(usuarioData));
+  };
 
   const logout = () => {
-    setUsuario(null)
-    setToken(null)
-    localStorage.removeItem("accessToken")
-    localStorage.removeItem("usuario")
-    navigate("/login")
-  }
+    setUsuario(null);
+    setToken(null);
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("refreshToken");
+    navigate("/login");
+  };
 
-  return <AuthContext.Provider value={{ usuario, token, carregando, login, logout }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ usuario, token, carregando, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

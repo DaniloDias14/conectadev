@@ -10,11 +10,13 @@ export default function Footer() {
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <p style={{ margin: "10px 0" }}>© 2025 ConectaDev. Todos os direitos reservados.</p>
+        <p style={{ margin: "10px 0" }}>
+          © 2025 ConectaDev. Todos os direitos reservados.
+        </p>
         <p style={{ margin: "5px 0", fontSize: "14px", color: "#bbb" }}>
           Plataforma segura de conexão entre desenvolvedores e contratantes
         </p>
       </div>
     </footer>
-  )
+  );
 }

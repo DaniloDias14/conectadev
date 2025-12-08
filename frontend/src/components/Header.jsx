@@ -184,7 +184,7 @@ export default function Header() {
             <>
               <span style={{ fontSize: "14px" }}>Olá, {usuario.nome}!</span>
               <button
-                onClick={() => navigate(`/perfil/${usuario.nomeUsuario}`)}
+                onClick={() => navigate(`/perfil/${usuario.nome_usuario}`)}
                 style={{
                   padding: "8px 16px",
                   backgroundColor: "transparent",

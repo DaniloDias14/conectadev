@@ -81,3 +81,19 @@ CREATE INDEX idx_propostas_desafio_id ON propostas(desafio_id);
 CREATE INDEX idx_propostas_usuario_id ON propostas(usuario_id);
 CREATE INDEX idx_comentarios_desafio_id ON comentarios(desafio_id);
 CREATE INDEX idx_tokens_usuario_id ON tokens_email(usuario_id);
+
+-- Adicionar coluna de currículo e tornar nome único
+ALTER TABLE usuarios ADD COLUMN curriculo_pdf TEXT;
+ALTER TABLE usuarios ADD CONSTRAINT usuarios_nome_unique UNIQUE (nome);
+
+-- Criar índice para busca rápida por nome
+CREATE INDEX idx_usuarios_nome ON usuarios(nome);
+
+-- Adicionar coluna nome_usuario na tabela usuarios
+ALTER TABLE usuarios ADD COLUMN nome_usuario VARCHAR(50) UNIQUE;
+
+-- Criar índice para buscas rápidas
+CREATE INDEX idx_usuarios_nome_usuario ON usuarios(nome_usuario);
+
+-- Comentário sobre a coluna (para documentação)
+COMMENT ON COLUMN usuarios.nome_usuario IS 'Username único do usuário no formato @username (sem o @), minúsculas, números, _ e .';

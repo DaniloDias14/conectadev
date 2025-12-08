@@ -124,18 +124,28 @@ router.post("/registro", async (req, res) => {
 // Login
 router.post("/login", async (req, res) => {
   try {
-    const { email, senha } = req.body;
+    const { credencial, senha } = req.body;
 
-    if (!email || !senha) {
+    if (!credencial || !senha) {
       return res
         .status(400)
-        .json({ mensagem: "Email e senha são obrigatórios" });
+        .json({ mensagem: "Email/usuário e senha são obrigatórios" });
     }
 
-    const resultado = await pool.query(
-      "SELECT * FROM usuarios WHERE email = $1",
-      [email]
-    );
+    // Detectar se é email ou nome_usuario
+    const ehEmail = credencial.includes("@");
+
+    let resultado;
+    if (ehEmail) {
+      resultado = await pool.query("SELECT * FROM usuarios WHERE email = $1", [
+        credencial,
+      ]);
+    } else {
+      resultado = await pool.query(
+        "SELECT * FROM usuarios WHERE nome_usuario = $1",
+        [credencial.toLowerCase()]
+      );
+    }
 
     if (resultado.rows.length === 0) {
       return res.status(401).json({ mensagem: "Email ou senha incorretos" });
@@ -162,7 +172,7 @@ router.post("/login", async (req, res) => {
     // Enviar email de login
     const agora = new Date().toLocaleString("pt-BR");
     await enviarEmail(
-      email,
+      usuario.email,
       "Login realizado - ConectaDev",
       `<p>Você fez login em sua conta ConectaDev às ${agora}</p>`
     );
@@ -174,7 +184,7 @@ router.post("/login", async (req, res) => {
         nome: usuario.nome,
         email: usuario.email,
         tipo: usuario.tipo,
-        nomeUsuario: usuario.nome_usuario,
+        nome_usuario: usuario.nome_usuario,
       },
       accessToken,
       refreshToken,

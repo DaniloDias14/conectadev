@@ -7,7 +7,7 @@ import { login } from "../services/auth";
 import "../styles/global.css";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [credencial, setCredencial] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -20,7 +20,7 @@ export default function Login() {
     setCarregando(true);
 
     try {
-      const dados = await login(email, senha);
+      const dados = await login(credencial, senha);
       fazerLogin(dados.usuario, dados.accessToken);
       localStorage.setItem("refreshToken", dados.refreshToken);
 
@@ -144,12 +144,12 @@ export default function Login() {
                   fontWeight: "bold",
                 }}
               >
-                Email
+                Email ou Nome de Usuário
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={credencial}
+                onChange={(e) => setCredencial(e.target.value)}
                 required
                 disabled={carregando}
                 style={{
@@ -160,7 +160,7 @@ export default function Login() {
                   fontSize: "14px",
                   boxSizing: "border-box",
                 }}
-                placeholder="seu@email.com"
+                placeholder="seu@email.com ou seu_usuario"
               />
             </div>
 

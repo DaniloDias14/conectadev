@@ -4,28 +4,6 @@ const autenticar = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.get("/:nomeUsuario", async (req, res) => {
-  try {
-    const { nomeUsuario } = req.params;
-
-    const resultado = await pool.query(
-      "SELECT id, nome, email, tipo, bio, telefone, foto_perfil, curriculo_pdf, criado_em, nome_usuario FROM usuarios WHERE nome_usuario = $1",
-      [nomeUsuario.toLowerCase()]
-    );
-
-    if (resultado.rows.length === 0) {
-      return res.status(404).json({ mensagem: "Usuário não encontrado" });
-    }
-
-    const usuario = resultado.rows[0];
-
-    res.json({ usuario });
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ mensagem: "Erro ao obter perfil" });
-  }
-});
-
 router.get("/busca/usuarios", async (req, res) => {
   try {
     const { q } = req.query;
@@ -39,13 +17,41 @@ router.get("/busca/usuarios", async (req, res) => {
 
     const resultado = await pool.query(
       "SELECT id, nome, tipo, foto_perfil, nome_usuario FROM usuarios WHERE LOWER(nome) ILIKE $1 OR LOWER(nome_usuario) ILIKE $2 LIMIT 10",
-      [`${busca}%`, `${busca}%`]
+      [`%${busca}%`, `%${busca}%`]
     );
 
     res.json({ usuarios: resultado.rows });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ mensagem: "Erro ao buscar usuários" });
+  }
+});
+
+router.get("/:nomeUsuario", async (req, res) => {
+  try {
+    const { nomeUsuario } = req.params;
+
+    if (!nomeUsuario) {
+      return res
+        .status(400)
+        .json({ mensagem: "Nome de usuário é obrigatório" });
+    }
+
+    const resultado = await pool.query(
+      "SELECT id, nome, email, tipo, bio, telefone, foto_perfil, curriculo_pdf, criado_em, nome_usuario FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1)",
+      [nomeUsuario]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ mensagem: "Usuário não encontrado" });
+    }
+
+    const usuario = resultado.rows[0];
+
+    res.json({ usuario });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao obter perfil" });
   }
 });
 
@@ -66,8 +72,8 @@ router.put("/", autenticar, async (req, res) => {
       }
 
       const nomeUsuarioExistente = await pool.query(
-        "SELECT id FROM usuarios WHERE nome_usuario = $1 AND id != $2",
-        [nomeUsuario.toLowerCase(), usuarioId]
+        "SELECT id FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1) AND id != $2",
+        [nomeUsuario, usuarioId]
       );
       if (nomeUsuarioExistente.rows.length > 0) {
         return res
@@ -119,8 +125,8 @@ router.get("/:nomeUsuario/desafios", async (req, res) => {
     const { nomeUsuario } = req.params;
 
     const usuarioResultado = await pool.query(
-      "SELECT id FROM usuarios WHERE nome_usuario = $1 AND tipo = $2",
-      [nomeUsuario.toLowerCase(), "contratante"]
+      "SELECT id FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1) AND tipo = $2",
+      [nomeUsuario, "contratante"]
     );
 
     if (usuarioResultado.rows.length === 0) {

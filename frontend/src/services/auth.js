@@ -11,9 +11,9 @@ export const cadastro = async (nome, email, senha, tipo, nomeUsuario) => {
   return response.data;
 };
 
-export const login = async (email, senha) => {
+export const login = async (credencial, senha) => {
   const response = await api.post("/auth/login", {
-    email,
+    credencial,
     senha,
   });
   return response.data;

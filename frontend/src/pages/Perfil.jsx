@@ -22,6 +22,12 @@ export default function Perfil() {
       return;
     }
 
+    if (!nomeUsuario) {
+      setErro("Perfil não encontrado");
+      setCarregando(false);
+      return;
+    }
+
     const carregarPerfil = async () => {
       try {
         const response = await api.get(`/perfil/${nomeUsuario}`);
@@ -34,6 +40,7 @@ export default function Perfil() {
           setDesafios(desafiosResponse.data.desafios || []);
         }
       } catch (err) {
+        console.error("Erro ao carregar perfil:", err);
         setErro("Perfil não encontrado");
       } finally {
         setCarregando(false);
