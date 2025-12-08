@@ -45,7 +45,6 @@ export default function Header() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
   };
 
   useEffect(() => {
@@ -212,21 +211,7 @@ export default function Header() {
                 Sair
               </button>
             </>
-          ) : (
-            <button
-              onClick={() => navigate("/login")}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#007bff",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Login
-            </button>
-          )}
+          ) : null}
         </nav>
       </div>
     </header>
