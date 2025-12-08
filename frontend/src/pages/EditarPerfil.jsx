@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import api from "../services/api";
@@ -22,17 +22,29 @@ export default function EditarPerfil() {
     curriculo_pdf: "",
   });
 
+  const [fotoFile, setFotoFile] = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
+  const [curriculoFile, setCurriculoFile] = useState(null);
+  const [curriculoAtual, setCurriculoAtual] = useState("");
+
+  const editorRef = useRef(null);
+  const [editorState, setEditorState] = useState({
+    negrito: false,
+    titulo: false,
+    alinhamento: "left",
+  });
 
   useEffect(() => {
     if (!token) {
-      navigate("/login");
+      navigate("/autenticacao");
       return;
     }
 
     const carregarPerfil = async () => {
       try {
-        const response = await api.get(`/perfil/${usuarioLogado.nome}`);
+        const response = await api.get(
+          `/perfil/${usuarioLogado?.nome_usuario}`
+        );
         const usuario = response.data.usuario;
 
         setFormData({
@@ -45,29 +57,110 @@ export default function EditarPerfil() {
         if (usuario.foto_perfil) {
           setFotoPreview(usuario.foto_perfil);
         }
+
+        if (usuario.curriculo_pdf) {
+          setCurriculoAtual(usuario.curriculo_pdf);
+        }
       } catch (err) {
         setErro("Erro ao carregar perfil");
-        console.error(err);
+        console.error("[v0] Erro ao carregar perfil:", err);
       } finally {
         setCarregando(false);
       }
     };
 
     carregarPerfil();
-  }, [token, navigate, usuarioLogado]);
+  }, [token, navigate, usuarioLogado?.nome_usuario]);
+
+  const formatarTelefone = (valor) => {
+    const apenasNumeros = valor.replace(/\D/g, "");
+    if (apenasNumeros.length === 0) return "";
+    if (apenasNumeros.length <= 2) return `(${apenasNumeros}`;
+    if (apenasNumeros.length <= 7) {
+      return `(${apenasNumeros.slice(0, 2)}) ${apenasNumeros.slice(2)}`;
+    }
+    return `(${apenasNumeros.slice(0, 2)}) ${apenasNumeros.slice(
+      2,
+      7
+    )}-${apenasNumeros.slice(7, 11)}`;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "telefone") {
+      const telefoneFomatado = formatarTelefone(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: telefoneFomatado,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  const aplicarFormatacao = (tipo) => {
+    const selection = window.getSelection();
+    const editor = editorRef.current;
+
+    if (tipo === "negrito") {
+      document.execCommand("bold", false, null);
+    } else if (tipo === "titulo") {
+      document.execCommand("formatBlock", false, "<h3>");
+    } else if (tipo.startsWith("align")) {
+      const alinhamento = tipo.replace("align-", "");
+      const comandoAlinhamento = {
+        left: "left",
+        center: "center",
+        right: "right",
+        justify: "justify",
+      }[alinhamento];
+      document.execCommand(
+        "align" +
+          comandoAlinhamento.charAt(0).toUpperCase() +
+          comandoAlinhamento.slice(1),
+        false,
+        null
+      );
+
+      setEditorState((prev) => ({
+        ...prev,
+        alinhamento,
+      }));
+    }
+
+    editor?.focus();
+  };
+
+  const handleEditorInput = () => {
+    const editor = editorRef.current;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      bio: editor.innerHTML,
+    }));
+  };
+
+  const handleEditorMouseUp = () => {
+    const editor = editorRef.current;
+    setFormData((prev) => ({
+      ...prev,
+      bio: editor.innerHTML,
+    }));
+
+    setEditorState((prev) => ({
+      ...prev,
+      negrito: document.queryCommandState("bold"),
+      titulo: document.queryCommandState("formatBlock") === "h3",
     }));
   };
 
   const handleFotoChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Simular upload de foto (em produção, seria enviado para servidor)
+      setFotoFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setFotoPreview(event.target.result);
@@ -78,16 +171,12 @@ export default function EditarPerfil() {
 
   const handleCurriculoChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Simular upload de currículo
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFormData((prev) => ({
-          ...prev,
-          curriculo_pdf: event.target.result,
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (file && file.type === "application/pdf") {
+      setCurriculoFile(file);
+      setMensagem("Novo currículo selecionado");
+      setErro("");
+    } else {
+      setErro("Por favor, selecione um arquivo PDF válido");
     }
   };
 
@@ -98,15 +187,34 @@ export default function EditarPerfil() {
     setMensagem("");
 
     try {
-      const response = await api.put("/perfil", formData);
+      const formDataToSend = new FormData();
+      formDataToSend.append("nome", formData.nome);
+      formDataToSend.append("bio", formData.bio);
+      formDataToSend.append("telefone", formData.telefone);
+
+      if (fotoFile) {
+        formDataToSend.append("foto_perfil", fotoFile);
+      }
+
+      if (curriculoFile) {
+        formDataToSend.append("curriculo_pdf", curriculoFile);
+      }
+
+      const response = await api.put("/perfil", formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       setMensagem("Perfil atualizado com sucesso!");
       setTimeout(() => {
-        navigate(`/perfil/${response.data.usuario.nome}`);
+        navigate(`/perfil/${response.data.usuario.nome_usuario}`);
       }, 1500);
     } catch (err) {
-      setErro(err.response?.data?.mensagem || "Erro ao atualizar perfil");
-      console.error(err);
+      const mensagemErro =
+        err.response?.data?.mensagem || "Erro ao atualizar perfil";
+      setErro(mensagemErro);
+      console.error("[v0] Erro ao atualizar perfil:", err);
     } finally {
       setSalvando(false);
     }
@@ -140,7 +248,7 @@ export default function EditarPerfil() {
     >
       <Header />
       <main style={{ flex: 1, padding: "20px" }}>
-        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "800px", margin: "0 auto" }}>
           <button
             onClick={() => navigate(-1)}
             style={{
@@ -194,7 +302,7 @@ export default function EditarPerfil() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} encType="multipart/form-data">
               {/* Foto de Perfil */}
               <div style={{ marginBottom: "20px" }}>
                 <label
@@ -235,7 +343,6 @@ export default function EditarPerfil() {
                 <small style={{ color: "#666" }}>JPG, PNG - Máximo 5MB</small>
               </div>
 
-              {/* Nome de Usuário */}
               <div style={{ marginBottom: "20px" }}>
                 <label
                   style={{
@@ -244,7 +351,7 @@ export default function EditarPerfil() {
                     fontWeight: "bold",
                   }}
                 >
-                  Nome de Usuário
+                  Nome
                 </label>
                 <input
                   type="text"
@@ -260,38 +367,7 @@ export default function EditarPerfil() {
                   }}
                   required
                 />
-                <small style={{ color: "#666" }}>
-                  Este nome será usado na URL do seu perfil
-                </small>
-              </div>
-
-              {/* Bio */}
-              <div style={{ marginBottom: "20px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Bio
-                </label>
-                <textarea
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                    boxSizing: "border-box",
-                    minHeight: "120px",
-                    fontFamily: "inherit",
-                  }}
-                  placeholder="Fale um pouco sobre você..."
-                />
-                <small style={{ color: "#666" }}>Máximo 500 caracteres</small>
+                <small style={{ color: "#666" }}>Seu nome completo</small>
               </div>
 
               {/* Telefone */}
@@ -321,6 +397,198 @@ export default function EditarPerfil() {
                 />
               </div>
 
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Bio
+                </label>
+
+                {/* Barra de ferramentas */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    marginBottom: "10px",
+                    padding: "8px",
+                    backgroundColor: "#f9f9f9",
+                    borderRadius: "4px",
+                    border: "1px solid #ddd",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("negrito")}
+                    title="Negrito (Ctrl+B)"
+                    style={{
+                      padding: "6px 10px",
+                      backgroundColor: editorState.negrito
+                        ? "#007bff"
+                        : "#e9ecef",
+                      color: editorState.negrito ? "white" : "black",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <strong>N</strong>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("titulo")}
+                    title="Título"
+                    style={{
+                      padding: "6px 10px",
+                      backgroundColor: editorState.titulo
+                        ? "#007bff"
+                        : "#e9ecef",
+                      color: editorState.titulo ? "white" : "black",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    }}
+                  >
+                    H3
+                  </button>
+
+                  <div
+                    style={{
+                      width: "1px",
+                      height: "24px",
+                      backgroundColor: "#ddd",
+                    }}
+                  />
+
+                  {/* Alinhamento */}
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("align-left")}
+                    title="Alinhar à esquerda"
+                    style={{
+                      padding: "6px 10px",
+                      backgroundColor:
+                        editorState.alinhamento === "left"
+                          ? "#007bff"
+                          : "#e9ecef",
+                      color:
+                        editorState.alinhamento === "left" ? "white" : "black",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                    }}
+                  >
+                    ⬅️
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("align-center")}
+                    title="Centralizar"
+                    style={{
+                      padding: "6px 10px",
+                      backgroundColor:
+                        editorState.alinhamento === "center"
+                          ? "#007bff"
+                          : "#e9ecef",
+                      color:
+                        editorState.alinhamento === "center"
+                          ? "white"
+                          : "black",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                    }}
+                  >
+                    ⬇️⬆️
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("align-right")}
+                    title="Alinhar à direita"
+                    style={{
+                      padding: "6px 10px",
+                      backgroundColor:
+                        editorState.alinhamento === "right"
+                          ? "#007bff"
+                          : "#e9ecef",
+                      color:
+                        editorState.alinhamento === "right" ? "white" : "black",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                    }}
+                  >
+                    ➡️
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("align-justify")}
+                    title="Justificar"
+                    style={{
+                      padding: "6px 10px",
+                      backgroundColor:
+                        editorState.alinhamento === "justify"
+                          ? "#007bff"
+                          : "#e9ecef",
+                      color:
+                        editorState.alinhamento === "justify"
+                          ? "white"
+                          : "black",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                    }}
+                  >
+                    ≡
+                  </button>
+                </div>
+
+                {/* Editor contenteditable */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleEditorInput}
+                  onMouseUp={handleEditorMouseUp}
+                  onKeyUp={handleEditorMouseUp}
+                  style={{
+                    width: "100%",
+                    minHeight: "200px",
+                    padding: "12px",
+                    borderRadius: "4px",
+                    border: "1px solid #ddd",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                    lineHeight: "1.6",
+                    outline: "none",
+                    overflowY: "auto",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: formData.bio }}
+                />
+                <small
+                  style={{ color: "#666", display: "block", marginTop: "8px" }}
+                >
+                  {formData.bio.length}/1000 caracteres
+                </small>
+              </div>
+
               {/* Currículo (apenas para proponentes) */}
               {usuarioLogado?.tipo === "proponente" && (
                 <div style={{ marginBottom: "20px" }}>
@@ -333,10 +601,20 @@ export default function EditarPerfil() {
                   >
                     Currículo (PDF)
                   </label>
-                  {formData.curriculo_pdf && (
+
+                  {curriculoAtual && (
                     <div style={{ marginBottom: "10px" }}>
+                      <p
+                        style={{
+                          margin: "0 0 8px 0",
+                          fontSize: "14px",
+                          color: "#666",
+                        }}
+                      >
+                        Currículo atual:
+                      </p>
                       <a
-                        href={formData.curriculo_pdf}
+                        href={curriculoAtual}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
@@ -349,10 +627,20 @@ export default function EditarPerfil() {
                           fontSize: "14px",
                         }}
                       >
-                        Ver Currículo Atual
+                        Baixar Currículo Atual
                       </a>
                     </div>
                   )}
+
+                  <p
+                    style={{
+                      margin: "10px 0 8px 0",
+                      fontSize: "14px",
+                      color: "#666",
+                    }}
+                  >
+                    Enviar novo currículo:
+                  </p>
                   <input
                     type="file"
                     accept=".pdf"

@@ -31,31 +31,30 @@ export default function Perfil() {
 
     const carregarPerfil = async () => {
       try {
-        console.log("[v0] Carregando perfil para:", nomeUsuario);
         const response = await api.get(`/perfil/${nomeUsuario}`);
-        console.log("[v0] Resposta do perfil:", response.data);
-        setUsuario(response.data.usuario);
+        const usuario = response.data.usuario;
+        setUsuario(usuario);
 
-        const isOwnProfile = response.data.usuario.id === usuarioLogado?.id;
+        const isOwnProfile = usuario.id === usuarioLogado?.id;
 
         if (isOwnProfile) {
-          if (response.data.usuario.tipo === "contratante") {
+          if (usuario.tipo === "contratante") {
             try {
               const desafiosResponse = await api.get(`/desafios/meus-desafios`);
-              console.log("[v0] Desafios carregados:", desafiosResponse.data);
               setDesafios(desafiosResponse.data.desafios || []);
             } catch (err) {
               console.error("[v0] Erro ao carregar desafios:", err);
+              setDesafios([]);
             }
-          } else {
+          } else if (usuario.tipo === "proponente") {
             try {
               const propostasResponse = await api.get(
                 `/propostas/minhas-propostas`
               );
-              console.log("[v0] Propostas carregadas:", propostasResponse.data);
               setPropostas(propostasResponse.data.propostas || []);
             } catch (err) {
               console.error("[v0] Erro ao carregar propostas:", err);
+              setPropostas([]);
             }
           }
         }
@@ -69,6 +68,19 @@ export default function Perfil() {
 
     carregarPerfil();
   }, [nomeUsuario, token, navigate, usuarioLogado?.id]);
+
+  const renderizarBio = (texto) => {
+    if (!texto) return "";
+
+    const html = texto
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Negrito
+      .replace(
+        /^# (.*?)$/gm,
+        "<h3 style='font-size: 1.2em; margin: 10px 0;'>$1</h3>"
+      ); // Títulos
+
+    return html;
+  };
 
   if (carregando) {
     return (
@@ -162,9 +174,9 @@ export default function Perfil() {
             <div style={{ flexShrink: 0 }}>
               <img
                 src={
-                  usuario.foto_perfil ||
-                  "/placeholder.svg?height=150&width=150&query=silhueta de usuário" ||
-                  "/placeholder.svg"
+                  usuario.foto_perfil
+                    ? `/${usuario.foto_perfil}`
+                    : "/placeholder.svg?height=150&width=150"
                 }
                 alt={usuario.nome}
                 style={{
@@ -243,12 +255,22 @@ export default function Perfil() {
                 }}
               >
                 <h2 style={{ marginTop: 0 }}>Sobre</h2>
-                <p style={{ color: "#666", lineHeight: "1.6" }}>
-                  {usuario.bio || "Nenhuma bio adicionada ainda"}
-                </p>
+                <div
+                  style={{
+                    color: "#666",
+                    lineHeight: "1.6",
+                    whiteSpace: "pre-wrap",
+                    wordWrap: "break-word",
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      renderizarBio(usuario.bio) ||
+                      "Nenhuma bio adicionada ainda",
+                  }}
+                />
               </div>
 
-              {usuario.curriculo_pdf && isOwnProfile && (
+              {usuario.curriculo_pdf && (
                 <div
                   style={{
                     backgroundColor: "white",
@@ -260,9 +282,8 @@ export default function Perfil() {
                 >
                   <h2 style={{ marginTop: 0 }}>Currículo</h2>
                   <a
-                    href={usuario.curriculo_pdf}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`/${usuario.curriculo_pdf}`}
+                    download
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -354,15 +375,22 @@ export default function Perfil() {
                   borderRadius: "8px",
                   boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
                   marginBottom: "20px",
-                  textAlign: "center",
                 }}
               >
                 <h2 style={{ marginTop: 0 }}>Sobre</h2>
-                <p
-                  style={{ color: "#666", lineHeight: "1.6", fontSize: "16px" }}
-                >
-                  {usuario.bio || "Nenhuma bio adicionada ainda"}
-                </p>
+                <div
+                  style={{
+                    color: "#666",
+                    lineHeight: "1.6",
+                    whiteSpace: "pre-wrap",
+                    wordWrap: "break-word",
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      renderizarBio(usuario.bio) ||
+                      "Nenhuma bio adicionada ainda",
+                  }}
+                />
               </div>
 
               {isOwnProfile && desafios.length > 0 && (

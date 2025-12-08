@@ -1,8 +1,46 @@
 const express = require("express");
 const { pool } = require("../config/supabaseClient");
 const autenticar = require("../middleware/authMiddleware");
+const fs = require("fs");
+const path = require("path");
+const Busboy = require("busboy");
 
 const router = express.Router();
+
+const parseFormData = (req) => {
+  return new Promise((resolve, reject) => {
+    const bb = Busboy({ headers: req.headers });
+    const fields = {};
+    const files = {};
+
+    bb.on("field", (fieldname, val) => {
+      fields[fieldname] = val;
+    });
+
+    bb.on("file", (fieldname, file, info) => {
+      const chunks = [];
+      file.on("data", (data) => {
+        chunks.push(data);
+      });
+      file.on("end", () => {
+        files[fieldname] = {
+          buffer: Buffer.concat(chunks),
+          filename: info.filename,
+          encoding: info.encoding,
+          mimeType: info.mimeType,
+        };
+      });
+    });
+
+    bb.on("close", () => {
+      resolve({ fields, files });
+    });
+
+    bb.on("error", reject);
+
+    req.pipe(bb);
+  });
+};
 
 router.get("/busca/usuarios", async (req, res) => {
   try {
@@ -12,7 +50,6 @@ router.get("/busca/usuarios", async (req, res) => {
       return res.json({ usuarios: [] });
     }
 
-    // Limpar o @ se o usuário digitou
     const busca = q.toLowerCase().replace(/^@/, "");
 
     const resultado = await pool.query(
@@ -37,10 +74,17 @@ router.get("/:nomeUsuario", async (req, res) => {
         .json({ mensagem: "Nome de usuário é obrigatório" });
     }
 
-    const resultado = await pool.query(
+    let resultado = await pool.query(
       "SELECT id, nome, email, tipo, bio, telefone, foto_perfil, curriculo_pdf, criado_em, nome_usuario FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1)",
       [nomeUsuario]
     );
+
+    if (resultado.rows.length === 0) {
+      resultado = await pool.query(
+        "SELECT id, nome, email, tipo, bio, telefone, foto_perfil, curriculo_pdf, criado_em, nome_usuario FROM usuarios WHERE LOWER(nome) = LOWER($1)",
+        [nomeUsuario]
+      );
+    }
 
     if (resultado.rows.length === 0) {
       return res.status(404).json({ mensagem: "Usuário não encontrado" });
@@ -50,56 +94,111 @@ router.get("/:nomeUsuario", async (req, res) => {
 
     res.json({ usuario });
   } catch (erro) {
-    console.error(erro);
+    console.error("[v0] Erro ao obter perfil:", erro);
     res.status(500).json({ mensagem: "Erro ao obter perfil" });
   }
 });
 
-// Atualizar próprio perfil (requer autenticação)
 router.put("/", autenticar, async (req, res) => {
   try {
-    const { nome, bio, telefone, curriculo_pdf, nomeUsuario } = req.body;
     const usuarioId = req.usuario.id;
 
-    if (nomeUsuario) {
-      const regex = /^[a-z0-9_.]+$/;
-      if (
-        !regex.test(nomeUsuario) ||
-        nomeUsuario.length < 3 ||
-        nomeUsuario.length > 50
-      ) {
-        return res.status(400).json({ mensagem: "Nome de usuário inválido" });
+    const { fields, files } = await parseFormData(req);
+    const { nome, bio, telefone } = fields;
+
+    // Obter usuário atual para deletar arquivos antigos
+    const usuarioAtual = await pool.query(
+      "SELECT foto_perfil, curriculo_pdf FROM usuarios WHERE id = $1",
+      [usuarioId]
+    );
+    const usuarioData = usuarioAtual.rows[0];
+
+    let fotoPerfilPath = usuarioData?.foto_perfil;
+    let curriculoPath = usuarioData?.curriculo_pdf;
+
+    if (files.foto_perfil) {
+      const fotoDir = path.join(__dirname, "../public/fotos-usuarios");
+      if (!fs.existsSync(fotoDir)) {
+        fs.mkdirSync(fotoDir, { recursive: true });
       }
 
-      const nomeUsuarioExistente = await pool.query(
-        "SELECT id FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1) AND id != $2",
-        [nomeUsuario, usuarioId]
-      );
-      if (nomeUsuarioExistente.rows.length > 0) {
+      // Deletar foto antiga
+      if (fotoPerfilPath) {
+        const caminhoFotoAntiga = path.join(
+          __dirname,
+          "../public",
+          fotoPerfilPath.replace(/^\/public\//, "")
+        );
+        if (fs.existsSync(caminhoFotoAntiga)) {
+          fs.unlinkSync(caminhoFotoAntiga);
+        }
+      }
+
+      // Salvar nova foto
+      const timestamp = Date.now();
+      const extensao = files.foto_perfil.filename.split(".").pop();
+      const nomeArquivo = `foto_${usuarioId}_${timestamp}.${extensao}`;
+      const caminhoCompleto = path.join(fotoDir, nomeArquivo);
+
+      fs.writeFileSync(caminhoCompleto, files.foto_perfil.buffer);
+      fotoPerfilPath = `/public/fotos-usuarios/${nomeArquivo}`;
+    }
+
+    if (files.curriculo_pdf) {
+      if (files.curriculo_pdf.mimeType !== "application/pdf") {
         return res
-          .status(409)
-          .json({ mensagem: "Nome de usuário já está em uso" });
+          .status(400)
+          .json({ mensagem: "O currículo deve ser um arquivo PDF" });
       }
+
+      if (files.curriculo_pdf.buffer.length > 10 * 1024 * 1024) {
+        return res
+          .status(400)
+          .json({ mensagem: "O currículo não pode exceder 10MB" });
+      }
+
+      const curricDir = path.join(__dirname, "../public/curriculos");
+      if (!fs.existsSync(curricDir)) {
+        fs.mkdirSync(curricDir, { recursive: true });
+      }
+
+      // Deletar currículo antigo
+      if (curriculoPath) {
+        const caminhoCurricAntigo = path.join(
+          __dirname,
+          "../public",
+          curriculoPath.replace(/^\/public\//, "")
+        );
+        if (fs.existsSync(caminhoCurricAntigo)) {
+          fs.unlinkSync(caminhoCurricAntigo);
+        }
+      }
+
+      // Salvar novo currículo
+      const timestamp = Date.now();
+      const nomeArquivo = `curriculo_${usuarioId}_${timestamp}.pdf`;
+      const caminhoCompleto = path.join(curricDir, nomeArquivo);
+
+      fs.writeFileSync(caminhoCompleto, files.curriculo_pdf.buffer);
+      curriculoPath = `/public/curriculos/${nomeArquivo}`;
     }
 
-    if (nome) {
-      const nomeExistente = await pool.query(
-        "SELECT id FROM usuarios WHERE nome = $1 AND id != $2",
-        [nome, usuarioId]
-      );
-      if (nomeExistente.rows.length > 0) {
-        return res.status(409).json({ mensagem: "Nome já está em uso" });
-      }
-    }
-
+    // Atualizar banco de dados
     const resultado = await pool.query(
-      "UPDATE usuarios SET nome = COALESCE($1, nome), bio = COALESCE($2, bio), telefone = COALESCE($3, telefone), curriculo_pdf = COALESCE($4, curriculo_pdf), nome_usuario = COALESCE($5, nome_usuario) WHERE id = $6 RETURNING id, nome, email, tipo, bio, telefone, foto_perfil, curriculo_pdf, criado_em, nome_usuario",
+      `UPDATE usuarios 
+       SET bio = COALESCE($1, bio), 
+           telefone = COALESCE($2, telefone), 
+           nome = COALESCE($3, nome),
+           foto_perfil = COALESCE($4, foto_perfil),
+           curriculo_pdf = COALESCE($5, curriculo_pdf)
+       WHERE id = $6 
+       RETURNING id, nome, email, tipo, bio, telefone, foto_perfil, curriculo_pdf, criado_em, nome_usuario`,
       [
-        nome || null,
         bio || null,
         telefone || null,
-        curriculo_pdf || null,
-        nomeUsuario ? nomeUsuario.toLowerCase() : null,
+        nome || null,
+        fotoPerfilPath,
+        curriculoPath,
         usuarioId,
       ]
     );
@@ -113,7 +212,7 @@ router.put("/", autenticar, async (req, res) => {
       usuario: resultado.rows[0],
     });
   } catch (erro) {
-    console.error(erro);
+    console.error("[v0] Erro ao atualizar perfil:", erro);
     res
       .status(500)
       .json({ mensagem: "Erro ao atualizar perfil: " + erro.message });
