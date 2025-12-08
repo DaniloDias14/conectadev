@@ -1,0 +1,87 @@
+.verify-email-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+.verify-email-card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 90%;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.success-icon {
+  font-size: 48px;
+  color: #4caf50;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+
+.error-icon {
+  font-size: 48px;
+  color: #f44336;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+
+.verify-email-card h1 {
+  margin: 20px 0 10px;
+  color: #333;
+  font-size: 24px;
+}
+
+.verify-email-card p {
+  color: #666;
+  margin: 10px 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.redirect-text {
+  color: #999;
+  font-size: 14px;
+  margin-top: 15px;
+}
+
+.btn-voltar {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background 0.3s;
+}
+
+.btn-voltar:hover {
+  background: #5568d3;
+}
