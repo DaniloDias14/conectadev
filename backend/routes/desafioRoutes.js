@@ -7,11 +7,16 @@ const router = express.Router();
 // Listar desafios (feed)
 router.get("/", async (req, res) => {
   try {
+    await pool.query(
+      `UPDATE desafios SET status = 'expirado' 
+       WHERE status = 'ativo' AND expira_em < NOW()`
+    );
+
     const resultado = await pool.query(
-      `SELECT d.*, u.nome as usuario_nome 
+      `SELECT d.*, u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.nome_usuario
        FROM desafios d 
        JOIN usuarios u ON d.usuario_id = u.id 
-       WHERE d.status = 'ativo' AND d.deletado_em IS NULL 
+       WHERE d.deletado_em IS NULL 
        ORDER BY d.criado_em DESC`
     );
 
@@ -28,7 +33,21 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
 
     const desafioResultado = await pool.query(
-      "SELECT * FROM desafios WHERE id = $1 AND deletado_em IS NULL",
+      `SELECT d.*, u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.nome_usuario,
+       (SELECT MIN(valor) FROM propostas WHERE desafio_id = d.id) as menor_proposta,
+       (SELECT COUNT(*) FROM propostas WHERE desafio_id = d.id) as total_propostas,
+       (SELECT u2.nome FROM propostas p 
+        JOIN usuarios u2 ON p.usuario_id = u2.id 
+        WHERE p.id = d.vencedor_proposta_id) as vencedor_nome,
+       (SELECT u2.foto_perfil FROM propostas p 
+        JOIN usuarios u2 ON p.usuario_id = u2.id 
+        WHERE p.id = d.vencedor_proposta_id) as vencedor_foto,
+       (SELECT u2.id FROM propostas p 
+        JOIN usuarios u2 ON p.usuario_id = u2.id 
+        WHERE p.id = d.vencedor_proposta_id) as vencedor_id
+       FROM desafios d 
+       JOIN usuarios u ON d.usuario_id = u.id
+       WHERE d.id = $1 AND d.deletado_em IS NULL`,
       [id]
     );
 
@@ -37,16 +56,31 @@ router.get("/:id", async (req, res) => {
     }
 
     const comentariosResultado = await pool.query(
-      `SELECT c.id, c.mensagem, c.criado_em 
+      `SELECT c.id, c.mensagem, c.criado_em, c.comentario_pai_id,
+       u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.id as usuario_id
        FROM comentarios c 
+       JOIN usuarios u ON c.usuario_id = u.id
        WHERE c.desafio_id = $1 
-       ORDER BY c.criado_em DESC`,
+       ORDER BY c.comentario_pai_id NULLS FIRST, c.criado_em ASC`,
       [id]
     );
 
+    const comentarios = comentariosResultado.rows.filter(
+      (c) => !c.comentario_pai_id
+    );
+    const respostas = comentariosResultado.rows.filter(
+      (c) => c.comentario_pai_id
+    );
+
+    comentarios.forEach((comentario) => {
+      comentario.respostas = respostas.filter(
+        (r) => r.comentario_pai_id === comentario.id
+      );
+    });
+
     res.json({
       desafio: desafioResultado.rows[0],
-      comentarios: comentariosResultado.rows,
+      comentarios: comentarios,
     });
   } catch (erro) {
     console.error(erro);
@@ -57,20 +91,33 @@ router.get("/:id", async (req, res) => {
 // Criar desafio
 router.post("/", async (req, res) => {
   try {
-    const { titulo, descricao, requisitos, linguagens, orcamento, expira_em } =
-      req.body;
+    const {
+      titulo,
+      descricao,
+      requisitos,
+      caracteristicas,
+      orcamento,
+      expira_em,
+      minutos_expiracao,
+    } = req.body;
     const usuarioId = req.usuario.id;
 
-    if (titulo.length < 10 || titulo.length > 200) {
+    if (!titulo || titulo.length > 50) {
       return res
         .status(400)
-        .json({ mensagem: "Título deve ter entre 10 e 200 caracteres" });
+        .json({ mensagem: "Título deve ter no máximo 50 caracteres" });
     }
 
-    if (descricao.length < 50 || descricao.length > 5000) {
+    if (!descricao || descricao.length > 1000) {
       return res
         .status(400)
-        .json({ mensagem: "Descrição deve ter entre 50 e 5000 caracteres" });
+        .json({ mensagem: "Descrição deve ter no máximo 1000 caracteres" });
+    }
+
+    if (!requisitos || requisitos.length > 500) {
+      return res
+        .status(400)
+        .json({ mensagem: "Requisitos deve ter no máximo 500 caracteres" });
     }
 
     if (orcamento <= 0) {
@@ -80,17 +127,18 @@ router.post("/", async (req, res) => {
     }
 
     const resultado = await pool.query(
-      `INSERT INTO desafios (usuario_id, titulo, descricao, requisitos, linguagens, orcamento, expira_em) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+      `INSERT INTO desafios (usuario_id, titulo, descricao, requisitos, caracteristicas, orcamento, expira_em, minutos_expiracao) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
        RETURNING *`,
       [
         usuarioId,
         titulo,
         descricao,
         requisitos,
-        linguagens,
+        caracteristicas,
         orcamento,
         expira_em,
+        minutos_expiracao,
       ]
     );
 
@@ -214,6 +262,43 @@ router.get("/meus-desafios", autenticar, async (req, res) => {
   } catch (erro) {
     console.error("[v0] Erro ao listar desafios:", erro);
     res.status(500).json({ mensagem: "Erro ao listar seus desafios" });
+  }
+});
+
+router.get("/:id/propostas", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuarioId = req.usuario.id;
+
+    // Verificar se é o dono do desafio
+    const desafioResultado = await pool.query(
+      "SELECT usuario_id FROM desafios WHERE id = $1",
+      [id]
+    );
+
+    if (desafioResultado.rows.length === 0) {
+      return res.status(404).json({ mensagem: "Desafio não encontrado" });
+    }
+
+    if (desafioResultado.rows[0].usuario_id !== usuarioId) {
+      return res
+        .status(403)
+        .json({ mensagem: "Sem permissão para ver as propostas" });
+    }
+
+    const resultado = await pool.query(
+      `SELECT p.*, u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.id as usuario_id
+       FROM propostas p
+       JOIN usuarios u ON p.usuario_id = u.id
+       WHERE p.desafio_id = $1
+       ORDER BY p.valor ASC`,
+      [id]
+    );
+
+    res.json({ propostas: resultado.rows });
+  } catch (erro) {
+    console.error("[v0] Erro ao listar propostas:", erro);
+    res.status(500).json({ mensagem: "Erro ao listar propostas" });
   }
 });
 

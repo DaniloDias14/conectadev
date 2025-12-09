@@ -251,18 +251,23 @@ router.get("/:nomeUsuario/desafios", async (req, res) => {
     const { nomeUsuario } = req.params;
 
     const usuarioResultado = await pool.query(
-      "SELECT id FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1) AND tipo = $2",
-      [nomeUsuario, "contratante"]
+      "SELECT id FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1)",
+      [nomeUsuario]
     );
 
     if (usuarioResultado.rows.length === 0) {
-      return res.status(404).json({ mensagem: "Contratante não encontrado" });
+      return res.status(404).json({ mensagem: "Usuário não encontrado" });
     }
 
     const usuarioId = usuarioResultado.rows[0].id;
 
+    await pool.query(
+      `UPDATE desafios SET status = 'expirado' 
+       WHERE status = 'ativo' AND expira_em < NOW()`
+    );
+
     const desafiosResultado = await pool.query(
-      "SELECT * FROM desafios WHERE usuario_id = $1 ORDER BY criado_em DESC",
+      "SELECT * FROM desafios WHERE usuario_id = $1 AND deletado_em IS NULL ORDER BY criado_em DESC",
       [usuarioId]
     );
 

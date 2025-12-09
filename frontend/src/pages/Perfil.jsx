@@ -37,25 +37,37 @@ export default function Perfil() {
 
         const isOwnProfile = usuario.id === usuarioLogado?.id;
 
-        if (isOwnProfile) {
-          if (usuario.tipo === "contratante") {
-            try {
-              const desafiosResponse = await api.get(`/desafios/meus-desafios`);
-              setDesafios(desafiosResponse.data.desafios || []);
-            } catch (err) {
-              console.error("Erro ao carregar desafios:", err);
-              setDesafios([]);
-            }
-          } else if (usuario.tipo === "proponente") {
-            try {
-              const propostasResponse = await api.get(
-                `/propostas/minhas-propostas`
+        if (usuario.tipo === "contratante") {
+          try {
+            const desafiosResponse = await api.get(
+              `/perfil/${nomeUsuario}/desafios`
+            );
+            const todosDesafios = desafiosResponse.data.desafios || [];
+
+            if (isOwnProfile) {
+              setDesafios(todosDesafios);
+            } else {
+              setDesafios(
+                todosDesafios.filter(
+                  (d) => d.status === "ativo" && !d.deletado_em
+                )
               );
-              setPropostas(propostasResponse.data.propostas || []);
-            } catch (err) {
-              console.error("Erro ao carregar propostas:", err);
-              setPropostas([]);
             }
+          } catch (err) {
+            console.error("Erro ao carregar desafios:", err);
+            setDesafios([]);
+          }
+        }
+
+        if (isOwnProfile && usuario.tipo === "proponente") {
+          try {
+            const propostasResponse = await api.get(
+              `/propostas/minhas-propostas`
+            );
+            setPropostas(propostasResponse.data.propostas || []);
+          } catch (err) {
+            console.error("Erro ao carregar propostas:", err);
+            setPropostas([]);
           }
         }
       } catch (err) {
@@ -76,7 +88,6 @@ export default function Perfil() {
 
     try {
       await api.delete("/perfil/foto");
-      // Recarregar perfil
       const response = await api.get(`/perfil/${nomeUsuario}`);
       setUsuario(response.data.usuario);
     } catch (err) {
@@ -116,7 +127,12 @@ export default function Perfil() {
   if (carregando) {
     return (
       <div
-        style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          backgroundColor: "#f8f9fa",
+        }}
       >
         <Header />
         <main
@@ -128,7 +144,9 @@ export default function Perfil() {
             alignItems: "center",
           }}
         >
-          <div>Carregando perfil...</div>
+          <div style={{ fontSize: "16px", color: "#666" }}>
+            Carregando perfil...
+          </div>
         </main>
         <Footer />
       </div>
@@ -138,7 +156,12 @@ export default function Perfil() {
   if (erro) {
     return (
       <div
-        style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          backgroundColor: "#f8f9fa",
+        }}
       >
         <Header />
         <main style={{ flex: 1, padding: "20px", color: "#c00" }}>
@@ -157,24 +180,29 @@ export default function Perfil() {
 
   const fotoPerfilUrl = usuario.foto_perfil
     ? `http://localhost:3001/${usuario.foto_perfil.replace("public/", "")}`
-    : "/FotoPerfil.jpg";
+    : "http://localhost:3001/FotoPerfil.jpg";
 
   return (
     <div
-      style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        backgroundColor: "#f8f9fa",
+      }}
     >
       <Header />
-      <main style={{ flex: 1, padding: "20px" }}>
-        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+      <main style={{ flex: 1, padding: "30px 20px" }}>
+        <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
           <div
             style={{
               backgroundColor: "white",
-              padding: "30px",
-              borderRadius: "8px",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-              marginBottom: "20px",
+              padding: "40px",
+              borderRadius: "12px",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+              marginBottom: "30px",
               display: "flex",
-              gap: "30px",
+              gap: "35px",
               alignItems: "flex-start",
             }}
           >
@@ -183,14 +211,15 @@ export default function Perfil() {
                 src={fotoPerfilUrl || "/placeholder.svg"}
                 alt={usuario.nome}
                 style={{
-                  width: "150px",
-                  height: "150px",
-                  borderRadius: "8px",
+                  width: "160px",
+                  height: "160px",
+                  borderRadius: "12px",
                   objectFit: "cover",
                   backgroundColor: "#f0f0f0",
+                  border: "3px solid #e8e8e8",
                 }}
                 onError={(e) => {
-                  e.target.src = "/FotoPerfil.jpg";
+                  e.target.src = "http://localhost:3001/FotoPerfil.jpg";
                 }}
               />
               {isOwnProfile && usuario.foto_perfil && (
@@ -198,15 +227,17 @@ export default function Perfil() {
                   onClick={removerFoto}
                   style={{
                     position: "absolute",
-                    top: "5px",
-                    right: "5px",
-                    padding: "5px 10px",
-                    backgroundColor: "#dc3545",
+                    top: "8px",
+                    right: "8px",
+                    padding: "6px 12px",
+                    backgroundColor: "#e74c3c",
                     color: "white",
                     border: "none",
-                    borderRadius: "4px",
+                    borderRadius: "6px",
                     cursor: "pointer",
                     fontSize: "12px",
+                    fontWeight: "600",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                   }}
                 >
                   Remover
@@ -214,37 +245,58 @@ export default function Perfil() {
               )}
             </div>
 
-            <div style={{ flex: "0 1 auto", maxWidth: "500px" }}>
-              <h1 style={{ margin: "0 0 5px 0" }}>{usuario.nome}</h1>
+            <div style={{ flex: 1 }}>
+              <h1
+                style={{
+                  margin: "0 0 8px 0",
+                  fontSize: "32px",
+                  color: "#2c3e50",
+                }}
+              >
+                {usuario.nome}
+              </h1>
               <p
                 style={{
-                  margin: "0 0 10px 0",
-                  color: "#666",
-                  fontSize: "16px",
+                  margin: "0 0 15px 0",
+                  color: "#7f8c8d",
+                  fontSize: "18px",
                 }}
               >
                 @{usuario.nome_usuario}
               </p>
 
-              <p style={{ margin: "5px 0", color: "#666" }}>
-                <strong>Tipo de Usuário:</strong>{" "}
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "6px 14px",
+                  backgroundColor:
+                    usuario.tipo === "contratante" ? "#e3f2fd" : "#f3e5f5",
+                  color: usuario.tipo === "contratante" ? "#1976d2" : "#7b1fa2",
+                  borderRadius: "20px",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  marginBottom: "15px",
+                }}
+              >
                 {usuario.tipo === "contratante" ? "Contratante" : "Proponente"}
-              </p>
+              </div>
 
               {isOwnProfile && (
-                <p style={{ margin: "5px 0", color: "#666" }}>
+                <p style={{ margin: "8px 0", color: "#555", fontSize: "15px" }}>
                   <strong>Email:</strong> {usuario.email}
                 </p>
               )}
 
               {usuario.telefone && isOwnProfile && (
-                <p style={{ margin: "5px 0", color: "#666" }}>
+                <p style={{ margin: "8px 0", color: "#555", fontSize: "15px" }}>
                   <strong>Telefone:</strong> {usuario.telefone}
                 </p>
               )}
 
-              <p style={{ margin: "5px 0", color: "#666" }}>
-                <strong>Membro desde:</strong>{" "}
+              <p
+                style={{ margin: "8px 0", color: "#7f8c8d", fontSize: "14px" }}
+              >
+                Membro desde{" "}
                 {new Date(usuario.criado_em).toLocaleDateString("pt-BR")}
               </p>
 
@@ -252,15 +304,23 @@ export default function Perfil() {
                 <button
                   onClick={() => navigate("/editar-perfil")}
                   style={{
-                    marginTop: "15px",
-                    padding: "10px 20px",
-                    backgroundColor: "#007bff",
+                    marginTop: "20px",
+                    padding: "12px 24px",
+                    backgroundColor: "#3498db",
                     color: "white",
                     border: "none",
-                    borderRadius: "4px",
+                    borderRadius: "8px",
                     cursor: "pointer",
-                    fontSize: "14px",
+                    fontSize: "15px",
+                    fontWeight: "600",
+                    transition: "background-color 0.3s",
                   }}
+                  onMouseEnter={(e) =>
+                    (e.target.style.backgroundColor = "#2980b9")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.target.style.backgroundColor = "#3498db")
+                  }
                 >
                   Editar Perfil
                 </button>
@@ -273,19 +333,24 @@ export default function Perfil() {
               <div
                 style={{
                   backgroundColor: "white",
-                  padding: "20px",
-                  borderRadius: "8px",
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                  marginBottom: "20px",
+                  padding: "30px",
+                  borderRadius: "12px",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                  marginBottom: "25px",
                 }}
               >
-                <h2 style={{ marginTop: 0 }}>Sobre</h2>
+                <h2
+                  style={{ marginTop: 0, fontSize: "22px", color: "#2c3e50" }}
+                >
+                  Sobre
+                </h2>
                 <div
                   style={{
-                    color: "#666",
-                    lineHeight: "1.6",
+                    color: "#555",
+                    lineHeight: "1.7",
                     whiteSpace: "pre-wrap",
                     wordWrap: "break-word",
+                    fontSize: "15px",
                   }}
                 >
                   {usuario.bio || "Nenhuma bio adicionada ainda"}
@@ -296,28 +361,41 @@ export default function Perfil() {
                 <div
                   style={{
                     backgroundColor: "white",
-                    padding: "20px",
-                    borderRadius: "8px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                    marginBottom: "20px",
+                    padding: "30px",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                    marginBottom: "25px",
                   }}
                 >
-                  <h2 style={{ marginTop: 0 }}>Currículo</h2>
+                  <h2
+                    style={{ marginTop: 0, fontSize: "22px", color: "#2c3e50" }}
+                  >
+                    Currículo
+                  </h2>
                   <button
                     onClick={baixarCurriculo}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "10px",
-                      padding: "10px 20px",
-                      backgroundColor: "#28a745",
+                      padding: "12px 24px",
+                      backgroundColor: "#27ae60",
                       color: "white",
                       border: "none",
-                      borderRadius: "4px",
+                      borderRadius: "8px",
                       cursor: "pointer",
+                      fontWeight: "600",
+                      fontSize: "15px",
+                      transition: "background-color 0.3s",
                     }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#229954")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "#27ae60")
+                    }
                   >
-                    Baixar Currículo (PDF)
+                    📄 Baixar Currículo (PDF)
                   </button>
                 </div>
               )}
@@ -326,12 +404,14 @@ export default function Perfil() {
                 <div
                   style={{
                     backgroundColor: "white",
-                    padding: "20px",
-                    borderRadius: "8px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                    padding: "30px",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
                   }}
                 >
-                  <h2 style={{ marginTop: 0 }}>
+                  <h2
+                    style={{ marginTop: 0, fontSize: "22px", color: "#2c3e50" }}
+                  >
                     Minhas Propostas ({propostas.length})
                   </h2>
 
@@ -339,7 +419,7 @@ export default function Perfil() {
                     style={{
                       display: "grid",
                       gridTemplateColumns:
-                        "repeat(auto-fill, minmax(300px, 1fr))",
+                        "repeat(auto-fill, minmax(320px, 1fr))",
                       gap: "20px",
                     }}
                   >
@@ -350,37 +430,66 @@ export default function Perfil() {
                           navigate(`/desafio/${proposta.desafio_id}`)
                         }
                         style={{
-                          padding: "15px",
-                          border: "1px solid #ddd",
-                          borderRadius: "4px",
+                          padding: "20px",
+                          border: "2px solid #e8e8e8",
+                          borderRadius: "10px",
                           cursor: "pointer",
                           transition: "all 0.3s",
                           background: "#f9f9f9",
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.boxShadow =
-                            "0 2px 8px rgba(0,0,0,0.15)";
-                          e.currentTarget.style.transform = "translateY(-2px)";
+                            "0 4px 12px rgba(0,0,0,0.12)";
+                          e.currentTarget.style.transform = "translateY(-3px)";
+                          e.currentTarget.style.borderColor = "#3498db";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.boxShadow = "none";
                           e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.borderColor = "#e8e8e8";
                         }}
                       >
-                        <h3 style={{ margin: "0 0 10px 0", fontSize: "16px" }}>
-                          {proposta.desafio?.titulo}
+                        <h3
+                          style={{
+                            margin: "0 0 12px 0",
+                            fontSize: "17px",
+                            color: "#2c3e50",
+                          }}
+                        >
+                          {proposta.titulo}
                         </h3>
                         <p
                           style={{
-                            margin: "5px 0",
-                            color: "#666",
-                            fontSize: "14px",
+                            margin: "8px 0",
+                            color: "#27ae60",
+                            fontSize: "18px",
+                            fontWeight: "700",
                           }}
                         >
-                          Valor: R$ {proposta.valor?.toLocaleString("pt-BR")}
+                          R${" "}
+                          {Number(proposta.valor).toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                          })}
                         </p>
-                        <p style={{ margin: "10px 0 0 0", fontSize: "14px" }}>
-                          <strong>Status:</strong> {proposta.status}
+                        <p
+                          style={{
+                            margin: "8px 0 0 0",
+                            fontSize: "14px",
+                            color: "#7f8c8d",
+                          }}
+                        >
+                          Status:{" "}
+                          <span
+                            style={{
+                              fontWeight: "600",
+                              color:
+                                proposta.desafio_status === "ativo"
+                                  ? "#27ae60"
+                                  : "#95a5a6",
+                            }}
+                          >
+                            {proposta.desafio_status}
+                          </span>
                         </p>
                       </div>
                     ))}
@@ -393,171 +502,184 @@ export default function Perfil() {
               <div
                 style={{
                   backgroundColor: "white",
-                  padding: "20px",
-                  borderRadius: "8px",
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                  marginBottom: "20px",
+                  padding: "30px",
+                  borderRadius: "12px",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                  marginBottom: "25px",
                 }}
               >
-                <h2 style={{ marginTop: 0 }}>Sobre</h2>
+                <h2
+                  style={{ marginTop: 0, fontSize: "22px", color: "#2c3e50" }}
+                >
+                  Sobre
+                </h2>
                 <div
                   style={{
-                    color: "#666",
-                    lineHeight: "1.6",
+                    color: "#555",
+                    lineHeight: "1.7",
                     whiteSpace: "pre-wrap",
                     wordWrap: "break-word",
+                    fontSize: "15px",
                   }}
                 >
                   {usuario.bio || "Nenhuma bio adicionada ainda"}
                 </div>
               </div>
 
-              {isOwnProfile && desafios.length > 0 && (
+              {desafios.length > 0 && (
                 <div
                   style={{
                     backgroundColor: "white",
-                    padding: "20px",
-                    borderRadius: "8px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                    padding: "30px",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
                   }}
                 >
-                  <h2 style={{ marginTop: 0 }}>
-                    Meus Desafios ({desafios.length})
+                  <h2
+                    style={{ marginTop: 0, fontSize: "22px", color: "#2c3e50" }}
+                  >
+                    {isOwnProfile ? "Meus Desafios" : "Desafios Publicados"} (
+                    {desafios.length})
                   </h2>
 
                   <div
                     style={{
                       display: "grid",
                       gridTemplateColumns:
-                        "repeat(auto-fill, minmax(300px, 1fr))",
+                        "repeat(auto-fill, minmax(320px, 1fr))",
                       gap: "20px",
                     }}
                   >
-                    {desafios.map((desafio) => (
-                      <div
-                        key={desafio.id}
-                        onClick={() => navigate(`/desafio/${desafio.id}`)}
-                        style={{
-                          padding: "15px",
-                          border: "1px solid #ddd",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          transition: "all 0.3s",
-                          background: desafio.ativo ? "#f9f9f9" : "#f0f0f0",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow =
-                            "0 2px 8px rgba(0,0,0,0.15)";
-                          e.currentTarget.style.transform = "translateY(-2px)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none";
-                          e.currentTarget.style.transform = "translateY(0)";
-                        }}
-                      >
-                        <h3 style={{ margin: "0 0 10px 0", fontSize: "16px" }}>
-                          {desafio.titulo}
-                        </h3>
-                        <p
-                          style={{
-                            margin: "5px 0",
-                            color: "#666",
-                            fontSize: "14px",
-                          }}
-                        >
-                          {desafio.descricao?.substring(0, 100)}...
-                        </p>
-                        <p style={{ margin: "10px 0 0 0", fontSize: "14px" }}>
-                          <strong>Orçamento:</strong> R${" "}
-                          {desafio.orcamento?.toLocaleString("pt-BR")}
-                        </p>
-                        <span
-                          style={{
-                            display: "inline-block",
-                            marginTop: "10px",
-                            padding: "4px 8px",
-                            backgroundColor: desafio.ativo
-                              ? "#28a745"
-                              : "#6c757d",
-                            color: "white",
-                            borderRadius: "3px",
-                            fontSize: "12px",
-                          }}
-                        >
-                          {desafio.ativo ? "Ativo" : "Inativo"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    {desafios.map((desafio) => {
+                      const estaExpirado =
+                        new Date(desafio.expira_em) < new Date();
+                      const estaAtivo =
+                        desafio.status === "ativo" && !estaExpirado;
 
-              {!isOwnProfile && desafios.length > 0 && (
-                <div
-                  style={{
-                    backgroundColor: "white",
-                    padding: "20px",
-                    borderRadius: "8px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <h2 style={{ marginTop: 0 }}>
-                    Desafios Publicados ({desafios.length})
-                  </h2>
+                      let caracteristicas = [];
+                      try {
+                        caracteristicas = JSON.parse(
+                          desafio.caracteristicas || "[]"
+                        );
+                      } catch (e) {
+                        caracteristicas = [];
+                      }
 
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fill, minmax(300px, 1fr))",
-                      gap: "20px",
-                    }}
-                  >
-                    {desafios
-                      .filter((d) => d.ativo)
-                      .map((desafio) => (
+                      return (
                         <div
                           key={desafio.id}
                           onClick={() => navigate(`/desafio/${desafio.id}`)}
                           style={{
-                            padding: "15px",
-                            border: "1px solid #ddd",
-                            borderRadius: "4px",
+                            padding: "20px",
+                            border: "2px solid #e8e8e8",
+                            borderRadius: "10px",
                             cursor: "pointer",
                             transition: "all 0.3s",
                             background: "#f9f9f9",
+                            position: "relative",
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.boxShadow =
-                              "0 2px 8px rgba(0,0,0,0.15)";
+                              "0 4px 12px rgba(0,0,0,0.12)";
                             e.currentTarget.style.transform =
-                              "translateY(-2px)";
+                              "translateY(-3px)";
+                            e.currentTarget.style.borderColor = "#3498db";
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.boxShadow = "none";
                             e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.borderColor = "#e8e8e8";
                           }}
                         >
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: "12px",
+                              right: "12px",
+                              padding: "4px 10px",
+                              backgroundColor: estaAtivo
+                                ? "#d4edda"
+                                : "#f8d7da",
+                              color: estaAtivo ? "#155724" : "#721c24",
+                              borderRadius: "12px",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            {estaAtivo
+                              ? "Ativo"
+                              : estaExpirado
+                              ? "Expirado"
+                              : desafio.status}
+                          </div>
+
                           <h3
-                            style={{ margin: "0 0 10px 0", fontSize: "16px" }}
+                            style={{
+                              margin: "0 0 12px 0",
+                              fontSize: "17px",
+                              color: "#2c3e50",
+                              paddingRight: "60px",
+                            }}
                           >
                             {desafio.titulo}
                           </h3>
+
+                          {caracteristicas.length > 0 && (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: "6px",
+                                marginBottom: "12px",
+                              }}
+                            >
+                              {caracteristicas.slice(0, 3).map((tech, idx) => (
+                                <span
+                                  key={idx}
+                                  style={{
+                                    backgroundColor: "#e3f2fd",
+                                    color: "#1976d2",
+                                    padding: "3px 8px",
+                                    borderRadius: "10px",
+                                    fontSize: "11px",
+                                    fontWeight: "500",
+                                  }}
+                                >
+                                  {tech}
+                                </span>
+                              ))}
+                              {caracteristicas.length > 3 && (
+                                <span
+                                  style={{
+                                    backgroundColor: "#f5f5f5",
+                                    color: "#666",
+                                    padding: "3px 8px",
+                                    borderRadius: "10px",
+                                    fontSize: "11px",
+                                  }}
+                                >
+                                  +{caracteristicas.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                           <p
                             style={{
-                              margin: "5px 0",
-                              color: "#666",
-                              fontSize: "14px",
+                              margin: "12px 0 0 0",
+                              fontSize: "18px",
+                              fontWeight: "700",
+                              color: "#27ae60",
                             }}
                           >
-                            {desafio.descricao?.substring(0, 100)}...
-                          </p>
-                          <p style={{ margin: "10px 0 0 0", fontSize: "14px" }}>
-                            <strong>Orçamento:</strong> R${" "}
-                            {desafio.orcamento?.toLocaleString("pt-BR")}
+                            R${" "}
+                            {Number(desafio.orcamento).toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2,
+                            })}
                           </p>
                         </div>
-                      ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

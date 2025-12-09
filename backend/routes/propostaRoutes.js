@@ -188,4 +188,20 @@ router.get("/minhas-propostas", async (req, res) => {
   }
 });
 
+router.get("/desafio/:desafioId/menor", async (req, res) => {
+  try {
+    const { desafioId } = req.params;
+
+    const resultado = await pool.query(
+      "SELECT MIN(valor) as menor_valor FROM propostas WHERE desafio_id = $1",
+      [desafioId]
+    );
+
+    res.json({ menorValor: resultado.rows[0].menor_valor });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao buscar menor proposta" });
+  }
+});
+
 module.exports = router;
