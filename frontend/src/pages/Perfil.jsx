@@ -89,22 +89,27 @@ export default function Perfil() {
     if (!usuario?.curriculo_pdf) return;
 
     try {
-      // Remover 'public/' do caminho para fazer request correto
       const caminhoArquivo = usuario.curriculo_pdf.replace("public/", "");
-      const response = await fetch(`http://localhost:3001/${caminhoArquivo}`);
-      const blob = await response.blob();
+      const url = `http://localhost:3001/${caminhoArquivo}`;
 
-      const url = window.URL.createObjectURL(blob);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = downloadUrl;
       a.download = `curriculo_${usuario.nome_usuario}.pdf`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
     } catch (err) {
       console.error("Erro ao baixar currículo:", err);
-      alert("Erro ao baixar currículo");
+      alert("Erro ao baixar currículo. Verifique se o arquivo existe.");
     }
   };
 
@@ -282,10 +287,9 @@ export default function Perfil() {
                     whiteSpace: "pre-wrap",
                     wordWrap: "break-word",
                   }}
-                  dangerouslySetInnerHTML={{
-                    __html: usuario.bio || "Nenhuma bio adicionada ainda",
-                  }}
-                />
+                >
+                  {usuario.bio || "Nenhuma bio adicionada ainda"}
+                </div>
               </div>
 
               {usuario.curriculo_pdf && (
@@ -403,10 +407,9 @@ export default function Perfil() {
                     whiteSpace: "pre-wrap",
                     wordWrap: "break-word",
                   }}
-                  dangerouslySetInnerHTML={{
-                    __html: usuario.bio || "Nenhuma bio adicionada ainda",
-                  }}
-                />
+                >
+                  {usuario.bio || "Nenhuma bio adicionada ainda"}
+                </div>
               </div>
 
               {isOwnProfile && desafios.length > 0 && (

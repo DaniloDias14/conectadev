@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import api from "../services/api"
+import { useState } from "react";
+import api from "../services/api";
 
 export default function Modal({ desafioId, onClose }) {
-  const [valor, setValor] = useState("")
-  const [justificativa, setJustificativa] = useState("")
-  const [prazo, setPrazo] = useState("")
-  const [erro, setErro] = useState("")
-  const [carregando, setCarregando] = useState(false)
+  const [valor, setValor] = useState("");
+  const [justificativa, setJustificativa] = useState("");
+  const [prazo, setPrazo] = useState("");
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setErro("")
-    setCarregando(true)
+    e.preventDefault();
+    setErro("");
+    setCarregando(true);
 
     if (justificativa.length < 30) {
-      setErro("Justificativa deve ter no mínimo 30 caracteres")
-      setCarregando(false)
-      return
+      setErro("Justificativa deve ter no mínimo 30 caracteres");
+      setCarregando(false);
+      return;
     }
 
     try {
@@ -27,16 +27,17 @@ export default function Modal({ desafioId, onClose }) {
         valor: Number.parseFloat(valor),
         justificativa,
         prazo_estimado: Number.parseInt(prazo),
-      })
+      });
 
-      alert("Proposta enviada com sucesso!")
-      onClose()
+      alert("Proposta enviada com sucesso!");
+      onClose();
     } catch (err) {
-      setErro(err.response?.data?.mensagem || "Erro ao enviar proposta")
+      console.error("[v0] Erro ao enviar proposta:", err);
+      setErro(err.response?.data?.mensagem || "Erro ao enviar proposta");
     } finally {
-      setCarregando(false)
+      setCarregando(false);
     }
-  }
+  };
 
   return (
     <div
@@ -64,7 +65,14 @@ export default function Modal({ desafioId, onClose }) {
           overflowY: "auto",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}
+        >
           <h2 style={{ margin: 0 }}>Enviar Proposta</h2>
           <button
             onClick={onClose}
@@ -96,7 +104,15 @@ export default function Modal({ desafioId, onClose }) {
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Valor (R$) *</label>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "bold",
+              }}
+            >
+              Valor (R$) *
+            </label>
             <input
               type="number"
               value={valor}
@@ -117,7 +133,15 @@ export default function Modal({ desafioId, onClose }) {
           </div>
 
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Justificativa *</label>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "bold",
+              }}
+            >
+              Justificativa *
+            </label>
             <textarea
               value={justificativa}
               onChange={(e) => setJustificativa(e.target.value)}
@@ -139,7 +163,15 @@ export default function Modal({ desafioId, onClose }) {
           </div>
 
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Prazo Estimado (dias) *</label>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "bold",
+              }}
+            >
+              Prazo Estimado (dias) *
+            </label>
             <input
               type="number"
               value={prazo}
@@ -195,5 +227,5 @@ export default function Modal({ desafioId, onClose }) {
         </form>
       </div>
     </div>
-  )
+  );
 }

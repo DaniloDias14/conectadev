@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import api from "../services/api";
@@ -26,8 +26,6 @@ export default function EditarPerfil() {
   const [fotoPreview, setFotoPreview] = useState(null);
   const [curriculoFile, setCurriculoFile] = useState(null);
   const [curriculoAtual, setCurriculoAtual] = useState("");
-
-  const editorRef = useRef(null);
 
   useEffect(() => {
     if (!token) {
@@ -100,32 +98,6 @@ export default function EditarPerfil() {
       setFormData((prev) => ({
         ...prev,
         [name]: value,
-      }));
-    }
-  };
-
-  const aplicarFormatacao = (comando, valor = null) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-
-    editor.focus();
-    document.execCommand(comando, false, valor);
-
-    // Atualizar estado após formatação
-    setTimeout(() => {
-      setFormData((prev) => ({
-        ...prev,
-        bio: editor.innerHTML,
-      }));
-    }, 0);
-  };
-
-  const handleEditorInput = () => {
-    const editor = editorRef.current;
-    if (editor) {
-      setFormData((prev) => ({
-        ...prev,
-        bio: editor.innerHTML,
       }));
     }
   };
@@ -367,174 +339,27 @@ export default function EditarPerfil() {
                   Sobre mim
                 </label>
 
-                {/* Barra de ferramentas intuitiva */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "8px",
-                    marginBottom: "10px",
-                    padding: "10px",
-                    backgroundColor: "#f8f9fa",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("bold")}
-                    onMouseDown={(e) => e.preventDefault()}
-                    title="Negrito"
-                    style={{
-                      padding: "8px 14px",
-                      backgroundColor: "white",
-                      color: "#333",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                      fontSize: "14px",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.backgroundColor = "#e9ecef")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.backgroundColor = "white")
-                    }
-                  >
-                    Negrito
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("italic")}
-                    onMouseDown={(e) => e.preventDefault()}
-                    title="Itálico"
-                    style={{
-                      padding: "8px 14px",
-                      backgroundColor: "white",
-                      color: "#333",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontStyle: "italic",
-                      fontSize: "14px",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.backgroundColor = "#e9ecef")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.backgroundColor = "white")
-                    }
-                  >
-                    Itálico
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("insertUnorderedList")}
-                    onMouseDown={(e) => e.preventDefault()}
-                    title="Lista"
-                    style={{
-                      padding: "8px 14px",
-                      backgroundColor: "white",
-                      color: "#333",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.backgroundColor = "#e9ecef")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.backgroundColor = "white")
-                    }
-                  >
-                    • Lista
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("formatBlock", "h3")}
-                    onMouseDown={(e) => e.preventDefault()}
-                    title="Título"
-                    style={{
-                      padding: "8px 14px",
-                      backgroundColor: "white",
-                      color: "#333",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                      fontSize: "16px",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.backgroundColor = "#e9ecef")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.backgroundColor = "white")
-                    }
-                  >
-                    Título
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("formatBlock", "p")}
-                    onMouseDown={(e) => e.preventDefault()}
-                    title="Parágrafo normal"
-                    style={{
-                      padding: "8px 14px",
-                      backgroundColor: "white",
-                      color: "#333",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.backgroundColor = "#e9ecef")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.backgroundColor = "white")
-                    }
-                  >
-                    Parágrafo
-                  </button>
-                </div>
-
-                {/* Editor de texto */}
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={handleEditorInput}
+                <textarea
+                  name="bio"
+                  value={formData.bio}
+                  onChange={handleInputChange}
                   style={{
                     width: "100%",
-                    minHeight: "250px",
-                    padding: "15px",
+                    minHeight: "150px",
+                    padding: "12px",
                     borderRadius: "4px",
-                    border: "2px solid #ddd",
+                    border: "1px solid #ddd",
                     boxSizing: "border-box",
                     fontFamily: "inherit",
-                    lineHeight: "1.6",
-                    outline: "none",
-                    overflowY: "auto",
-                    backgroundColor: "white",
+                    fontSize: "14px",
+                    lineHeight: "1.5",
+                    resize: "vertical",
                   }}
-                  dangerouslySetInnerHTML={{ __html: formData.bio }}
+                  placeholder="Conte um pouco sobre você, suas habilidades e experiências..."
                 />
-                <small
-                  style={{ color: "#666", display: "block", marginTop: "8px" }}
-                >
-                  Selecione o texto e use os botões acima para formatar. Escreva
-                  livremente sobre você, suas habilidades e experiências.
+                <small style={{ color: "#666" }}>
+                  Escreva livremente sobre você, suas habilidades e
+                  experiências.
                 </small>
               </div>
 
