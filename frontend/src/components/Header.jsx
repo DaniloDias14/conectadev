@@ -13,6 +13,8 @@ export default function Header() {
   const [mostraSugestoes, setMostraSugestoes] = useState(false);
   const refBusca = useRef(null);
 
+  const [fotoPerfil, setFotoPerfil] = useState(null);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (busca.length >= 1) {
@@ -24,6 +26,29 @@ export default function Header() {
 
     return () => clearTimeout(timer);
   }, [busca]);
+
+  useEffect(() => {
+    const carregarFotoPerfil = async () => {
+      if (usuario?.nome_usuario) {
+        try {
+          const response = await api.get(`/perfil/${usuario.nome_usuario}`);
+          const fotoUrl = response.data.usuario.foto_perfil;
+          if (fotoUrl) {
+            setFotoPerfil(
+              `http://localhost:3001/${fotoUrl.replace("public/", "")}`
+            );
+          } else {
+            setFotoPerfil("/FotoPerfil.jpg");
+          }
+        } catch (erro) {
+          console.error("Erro ao carregar foto do perfil:", erro);
+          setFotoPerfil("/FotoPerfil.jpg");
+        }
+      }
+    };
+
+    carregarFotoPerfil();
+  }, [usuario?.nome_usuario]);
 
   const buscarUsuarios = async () => {
     try {
@@ -149,21 +174,29 @@ export default function Header() {
                     (e.currentTarget.style.backgroundColor = "white")
                   }
                 >
-                  {user.foto_perfil && (
-                    <img
-                      src={user.foto_perfil || "/placeholder.svg"}
-                      alt={user.nome}
-                      style={{
-                        width: "30px",
-                        height: "30px",
-                        borderRadius: "50%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  )}
+                  <img
+                    src={
+                      user.foto_perfil
+                        ? `http://localhost:3001/${user.foto_perfil.replace(
+                            "public/",
+                            ""
+                          )}`
+                        : "/FotoPerfil.jpg"
+                    }
+                    alt={user.nome}
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.target.src = "/FotoPerfil.jpg";
+                    }}
+                  />
                   <div>
                     <strong style={{ display: "block" }}>{user.nome}</strong>
-                    <small style={{ color: "#007bff" }}>
+                    <small style={{ color: "#666" }}>
                       @{user.nome_usuario}
                     </small>
                     <small style={{ color: "#666", marginLeft: "10px" }}>
@@ -183,7 +216,7 @@ export default function Header() {
             <>
               <span style={{ fontSize: "14px" }}>Olá, {usuario.nome}!</span>
               <button
-                onClick={() => navigate(`/perfil/${usuario.nome_usuario}`)}
+                onClick={() => navigate("/feed")}
                 style={{
                   padding: "8px 16px",
                   backgroundColor: "transparent",
@@ -194,6 +227,36 @@ export default function Header() {
                   fontSize: "14px",
                 }}
               >
+                Feed
+              </button>
+              <button
+                onClick={() => navigate(`/perfil/${usuario.nome_usuario}`)}
+                style={{
+                  padding: "6px 12px",
+                  backgroundColor: "transparent",
+                  color: "white",
+                  border: "1px solid white",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <img
+                  src={fotoPerfil || "/FotoPerfil.jpg"}
+                  alt="Foto de perfil"
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "4px",
+                    objectFit: "cover",
+                  }}
+                  onError={(e) => {
+                    e.target.src = "/FotoPerfil.jpg";
+                  }}
+                />
                 Meu Perfil
               </button>
               <button

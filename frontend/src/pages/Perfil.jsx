@@ -43,7 +43,7 @@ export default function Perfil() {
               const desafiosResponse = await api.get(`/desafios/meus-desafios`);
               setDesafios(desafiosResponse.data.desafios || []);
             } catch (err) {
-              console.error("[v0] Erro ao carregar desafios:", err);
+              console.error("Erro ao carregar desafios:", err);
               setDesafios([]);
             }
           } else if (usuario.tipo === "proponente") {
@@ -53,13 +53,13 @@ export default function Perfil() {
               );
               setPropostas(propostasResponse.data.propostas || []);
             } catch (err) {
-              console.error("[v0] Erro ao carregar propostas:", err);
+              console.error("Erro ao carregar propostas:", err);
               setPropostas([]);
             }
           }
         }
       } catch (err) {
-        console.error("[v0] Erro ao carregar perfil:", err);
+        console.error("Erro ao carregar perfil:", err);
         setErro("Perfil não encontrado");
       } finally {
         setCarregando(false);
@@ -69,17 +69,43 @@ export default function Perfil() {
     carregarPerfil();
   }, [nomeUsuario, token, navigate, usuarioLogado?.id]);
 
-  const renderizarBio = (texto) => {
-    if (!texto) return "";
+  const removerFoto = async () => {
+    if (!window.confirm("Tem certeza que deseja remover sua foto de perfil?")) {
+      return;
+    }
 
-    const html = texto
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Negrito
-      .replace(
-        /^# (.*?)$/gm,
-        "<h3 style='font-size: 1.2em; margin: 10px 0;'>$1</h3>"
-      ); // Títulos
+    try {
+      await api.delete("/perfil/foto");
+      // Recarregar perfil
+      const response = await api.get(`/perfil/${nomeUsuario}`);
+      setUsuario(response.data.usuario);
+    } catch (err) {
+      console.error("Erro ao remover foto:", err);
+      alert("Erro ao remover foto de perfil");
+    }
+  };
 
-    return html;
+  const baixarCurriculo = async () => {
+    if (!usuario?.curriculo_pdf) return;
+
+    try {
+      // Remover 'public/' do caminho para fazer request correto
+      const caminhoArquivo = usuario.curriculo_pdf.replace("public/", "");
+      const response = await fetch(`http://localhost:3001/${caminhoArquivo}`);
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `curriculo_${usuario.nome_usuario}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Erro ao baixar currículo:", err);
+      alert("Erro ao baixar currículo");
+    }
   };
 
   if (carregando) {
@@ -113,19 +139,6 @@ export default function Perfil() {
         <main style={{ flex: 1, padding: "20px", color: "#c00" }}>
           <div>
             <p>{erro}</p>
-            <button
-              onClick={() => navigate(-1)}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#6c757d",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Voltar
-            </button>
           </div>
         </main>
         <Footer />
@@ -137,6 +150,10 @@ export default function Perfil() {
 
   const isOwnProfile = usuarioLogado?.id === usuario.id;
 
+  const fotoPerfilUrl = usuario.foto_perfil
+    ? `http://localhost:3001/${usuario.foto_perfil.replace("public/", "")}`
+    : "/FotoPerfil.jpg";
+
   return (
     <div
       style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
@@ -144,21 +161,6 @@ export default function Perfil() {
       <Header />
       <main style={{ flex: 1, padding: "20px" }}>
         <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              marginBottom: "20px",
-            }}
-          >
-            Voltar
-          </button>
-
           <div
             style={{
               backgroundColor: "white",
@@ -171,13 +173,9 @@ export default function Perfil() {
               alignItems: "flex-start",
             }}
           >
-            <div style={{ flexShrink: 0 }}>
+            <div style={{ flexShrink: 0, position: "relative" }}>
               <img
-                src={
-                  usuario.foto_perfil
-                    ? `/${usuario.foto_perfil}`
-                    : "/placeholder.svg?height=150&width=150"
-                }
+                src={fotoPerfilUrl || "/placeholder.svg"}
                 alt={usuario.nome}
                 style={{
                   width: "150px",
@@ -186,15 +184,37 @@ export default function Perfil() {
                   objectFit: "cover",
                   backgroundColor: "#f0f0f0",
                 }}
+                onError={(e) => {
+                  e.target.src = "/FotoPerfil.jpg";
+                }}
               />
+              {isOwnProfile && usuario.foto_perfil && (
+                <button
+                  onClick={removerFoto}
+                  style={{
+                    position: "absolute",
+                    top: "5px",
+                    right: "5px",
+                    padding: "5px 10px",
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                  }}
+                >
+                  Remover
+                </button>
+              )}
             </div>
 
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: "0 1 auto", maxWidth: "500px" }}>
               <h1 style={{ margin: "0 0 5px 0" }}>{usuario.nome}</h1>
               <p
                 style={{
                   margin: "0 0 10px 0",
-                  color: "#007bff",
+                  color: "#666",
                   fontSize: "16px",
                 }}
               >
@@ -263,9 +283,7 @@ export default function Perfil() {
                     wordWrap: "break-word",
                   }}
                   dangerouslySetInnerHTML={{
-                    __html:
-                      renderizarBio(usuario.bio) ||
-                      "Nenhuma bio adicionada ainda",
+                    __html: usuario.bio || "Nenhuma bio adicionada ainda",
                   }}
                 />
               </div>
@@ -281,9 +299,8 @@ export default function Perfil() {
                   }}
                 >
                   <h2 style={{ marginTop: 0 }}>Currículo</h2>
-                  <a
-                    href={`/${usuario.curriculo_pdf}`}
-                    download
+                  <button
+                    onClick={baixarCurriculo}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -291,12 +308,13 @@ export default function Perfil() {
                       padding: "10px 20px",
                       backgroundColor: "#28a745",
                       color: "white",
-                      textDecoration: "none",
+                      border: "none",
                       borderRadius: "4px",
+                      cursor: "pointer",
                     }}
                   >
                     Baixar Currículo (PDF)
-                  </a>
+                  </button>
                 </div>
               )}
 
@@ -386,9 +404,7 @@ export default function Perfil() {
                     wordWrap: "break-word",
                   }}
                   dangerouslySetInnerHTML={{
-                    __html:
-                      renderizarBio(usuario.bio) ||
-                      "Nenhuma bio adicionada ainda",
+                    __html: usuario.bio || "Nenhuma bio adicionada ainda",
                   }}
                 />
               </div>

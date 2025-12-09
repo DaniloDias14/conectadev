@@ -117,18 +117,14 @@ router.put("/", autenticar, async (req, res) => {
     let curriculoPath = usuarioData?.curriculo_pdf;
 
     if (files.foto_perfil) {
-      const fotoDir = path.join(__dirname, "../public/fotos-usuarios");
+      const fotoDir = path.join(__dirname, "../../public/fotos_usuarios");
       if (!fs.existsSync(fotoDir)) {
         fs.mkdirSync(fotoDir, { recursive: true });
       }
 
-      // Deletar foto antiga
+      // Deletar foto antiga se existir
       if (fotoPerfilPath) {
-        const caminhoFotoAntiga = path.join(
-          __dirname,
-          "../public",
-          fotoPerfilPath.replace(/^\/public\//, "")
-        );
+        const caminhoFotoAntiga = path.join(__dirname, "../..", fotoPerfilPath);
         if (fs.existsSync(caminhoFotoAntiga)) {
           fs.unlinkSync(caminhoFotoAntiga);
         }
@@ -141,7 +137,7 @@ router.put("/", autenticar, async (req, res) => {
       const caminhoCompleto = path.join(fotoDir, nomeArquivo);
 
       fs.writeFileSync(caminhoCompleto, files.foto_perfil.buffer);
-      fotoPerfilPath = `/public/fotos-usuarios/${nomeArquivo}`;
+      fotoPerfilPath = `public/fotos_usuarios/${nomeArquivo}`;
     }
 
     if (files.curriculo_pdf) {
@@ -157,17 +153,17 @@ router.put("/", autenticar, async (req, res) => {
           .json({ mensagem: "O currículo não pode exceder 10MB" });
       }
 
-      const curricDir = path.join(__dirname, "../public/curriculos");
+      const curricDir = path.join(__dirname, "../../public/curriculos");
       if (!fs.existsSync(curricDir)) {
         fs.mkdirSync(curricDir, { recursive: true });
       }
 
-      // Deletar currículo antigo
+      // Deletar currículo antigo se existir
       if (curriculoPath) {
         const caminhoCurricAntigo = path.join(
           __dirname,
-          "../public",
-          curriculoPath.replace(/^\/public\//, "")
+          "../..",
+          curriculoPath
         );
         if (fs.existsSync(caminhoCurricAntigo)) {
           fs.unlinkSync(caminhoCurricAntigo);
@@ -180,7 +176,7 @@ router.put("/", autenticar, async (req, res) => {
       const caminhoCompleto = path.join(curricDir, nomeArquivo);
 
       fs.writeFileSync(caminhoCompleto, files.curriculo_pdf.buffer);
-      curriculoPath = `/public/curriculos/${nomeArquivo}`;
+      curriculoPath = `public/curriculos/${nomeArquivo}`;
     }
 
     // Atualizar banco de dados
@@ -216,6 +212,37 @@ router.put("/", autenticar, async (req, res) => {
     res
       .status(500)
       .json({ mensagem: "Erro ao atualizar perfil: " + erro.message });
+  }
+});
+
+router.delete("/foto", autenticar, async (req, res) => {
+  try {
+    const usuarioId = req.usuario.id;
+
+    // Obter caminho da foto atual
+    const usuarioAtual = await pool.query(
+      "SELECT foto_perfil FROM usuarios WHERE id = $1",
+      [usuarioId]
+    );
+    const fotoAtual = usuarioAtual.rows[0]?.foto_perfil;
+
+    // Deletar arquivo físico se existir
+    if (fotoAtual) {
+      const caminhoFoto = path.join(__dirname, "../..", fotoAtual);
+      if (fs.existsSync(caminhoFoto)) {
+        fs.unlinkSync(caminhoFoto);
+      }
+    }
+
+    // Atualizar banco removendo foto_perfil
+    await pool.query("UPDATE usuarios SET foto_perfil = NULL WHERE id = $1", [
+      usuarioId,
+    ]);
+
+    res.json({ mensagem: "Foto removida com sucesso" });
+  } catch (erro) {
+    console.error("Erro ao remover foto:", erro);
+    res.status(500).json({ mensagem: "Erro ao remover foto" });
   }
 });
 

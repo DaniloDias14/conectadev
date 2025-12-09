@@ -28,11 +28,6 @@ export default function EditarPerfil() {
   const [curriculoAtual, setCurriculoAtual] = useState("");
 
   const editorRef = useRef(null);
-  const [editorState, setEditorState] = useState({
-    negrito: false,
-    titulo: false,
-    alinhamento: "left",
-  });
 
   useEffect(() => {
     if (!token) {
@@ -55,7 +50,14 @@ export default function EditarPerfil() {
         });
 
         if (usuario.foto_perfil) {
-          setFotoPreview(usuario.foto_perfil);
+          setFotoPreview(
+            `http://localhost:3001/${usuario.foto_perfil.replace(
+              "public/",
+              ""
+            )}`
+          );
+        } else {
+          setFotoPreview("/FotoPerfil.jpg");
         }
 
         if (usuario.curriculo_pdf) {
@@ -63,7 +65,7 @@ export default function EditarPerfil() {
         }
       } catch (err) {
         setErro("Erro ao carregar perfil");
-        console.error("[v0] Erro ao carregar perfil:", err);
+        console.error("Erro ao carregar perfil:", err);
       } finally {
         setCarregando(false);
       }
@@ -102,59 +104,30 @@ export default function EditarPerfil() {
     }
   };
 
-  const aplicarFormatacao = (tipo) => {
-    const selection = window.getSelection();
+  const aplicarFormatacao = (comando, valor = null) => {
     const editor = editorRef.current;
+    if (!editor) return;
 
-    if (tipo === "negrito") {
-      document.execCommand("bold", false, null);
-    } else if (tipo === "titulo") {
-      document.execCommand("formatBlock", false, "<h3>");
-    } else if (tipo.startsWith("align")) {
-      const alinhamento = tipo.replace("align-", "");
-      const comandoAlinhamento = {
-        left: "left",
-        center: "center",
-        right: "right",
-        justify: "justify",
-      }[alinhamento];
-      document.execCommand(
-        "align" +
-          comandoAlinhamento.charAt(0).toUpperCase() +
-          comandoAlinhamento.slice(1),
-        false,
-        null
-      );
+    editor.focus();
+    document.execCommand(comando, false, valor);
 
-      setEditorState((prev) => ({
+    // Atualizar estado após formatação
+    setTimeout(() => {
+      setFormData((prev) => ({
         ...prev,
-        alinhamento,
+        bio: editor.innerHTML,
       }));
-    }
-
-    editor?.focus();
+    }, 0);
   };
 
   const handleEditorInput = () => {
     const editor = editorRef.current;
-    setFormData((prev) => ({
-      ...prev,
-      bio: editor.innerHTML,
-    }));
-  };
-
-  const handleEditorMouseUp = () => {
-    const editor = editorRef.current;
-    setFormData((prev) => ({
-      ...prev,
-      bio: editor.innerHTML,
-    }));
-
-    setEditorState((prev) => ({
-      ...prev,
-      negrito: document.queryCommandState("bold"),
-      titulo: document.queryCommandState("formatBlock") === "h3",
-    }));
+    if (editor) {
+      setFormData((prev) => ({
+        ...prev,
+        bio: editor.innerHTML,
+      }));
+    }
   };
 
   const handleFotoChange = (e) => {
@@ -214,7 +187,7 @@ export default function EditarPerfil() {
       const mensagemErro =
         err.response?.data?.mensagem || "Erro ao atualizar perfil";
       setErro(mensagemErro);
-      console.error("[v0] Erro ao atualizar perfil:", err);
+      console.error("Erro ao atualizar perfil:", err);
     } finally {
       setSalvando(false);
     }
@@ -249,21 +222,6 @@ export default function EditarPerfil() {
       <Header />
       <main style={{ flex: 1, padding: "20px" }}>
         <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              marginBottom: "20px",
-            }}
-          >
-            Voltar
-          </button>
-
           <div
             style={{
               backgroundColor: "white",
@@ -314,20 +272,21 @@ export default function EditarPerfil() {
                 >
                   Foto de Perfil
                 </label>
-                {fotoPreview && (
-                  <img
-                    src={fotoPreview || "/placeholder.svg"}
-                    alt="Preview"
-                    style={{
-                      width: "150px",
-                      height: "150px",
-                      borderRadius: "8px",
-                      objectFit: "cover",
-                      marginBottom: "10px",
-                      display: "block",
-                    }}
-                  />
-                )}
+                <img
+                  src={fotoPreview || "/FotoPerfil.jpg"}
+                  alt="Preview"
+                  style={{
+                    width: "150px",
+                    height: "150px",
+                    borderRadius: "8px",
+                    objectFit: "cover",
+                    marginBottom: "10px",
+                    display: "block",
+                  }}
+                  onError={(e) => {
+                    e.target.src = "/FotoPerfil.jpg";
+                  }}
+                />
                 <input
                   type="file"
                   accept="image/*"
@@ -405,187 +364,177 @@ export default function EditarPerfil() {
                     fontWeight: "bold",
                   }}
                 >
-                  Bio
+                  Sobre mim
                 </label>
 
-                {/* Barra de ferramentas */}
+                {/* Barra de ferramentas intuitiva */}
                 <div
                   style={{
                     display: "flex",
                     gap: "8px",
                     marginBottom: "10px",
-                    padding: "8px",
-                    backgroundColor: "#f9f9f9",
+                    padding: "10px",
+                    backgroundColor: "#f8f9fa",
                     borderRadius: "4px",
                     border: "1px solid #ddd",
                     flexWrap: "wrap",
-                    alignItems: "center",
                   }}
                 >
                   <button
                     type="button"
-                    onClick={() => aplicarFormatacao("negrito")}
-                    title="Negrito (Ctrl+B)"
+                    onClick={() => aplicarFormatacao("bold")}
+                    onMouseDown={(e) => e.preventDefault()}
+                    title="Negrito"
                     style={{
-                      padding: "6px 10px",
-                      backgroundColor: editorState.negrito
-                        ? "#007bff"
-                        : "#e9ecef",
-                      color: editorState.negrito ? "white" : "black",
-                      border: "1px solid #ddd",
+                      padding: "8px 14px",
+                      backgroundColor: "white",
+                      color: "#333",
+                      border: "1px solid #ccc",
                       borderRadius: "4px",
                       cursor: "pointer",
                       fontWeight: "bold",
                       fontSize: "14px",
+                      transition: "all 0.2s",
                     }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#e9ecef")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "white")
+                    }
                   >
-                    <strong>N</strong>
+                    Negrito
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => aplicarFormatacao("titulo")}
+                    onClick={() => aplicarFormatacao("italic")}
+                    onMouseDown={(e) => e.preventDefault()}
+                    title="Itálico"
+                    style={{
+                      padding: "8px 14px",
+                      backgroundColor: "white",
+                      color: "#333",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontStyle: "italic",
+                      fontSize: "14px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#e9ecef")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "white")
+                    }
+                  >
+                    Itálico
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("insertUnorderedList")}
+                    onMouseDown={(e) => e.preventDefault()}
+                    title="Lista"
+                    style={{
+                      padding: "8px 14px",
+                      backgroundColor: "white",
+                      color: "#333",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#e9ecef")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "white")
+                    }
+                  >
+                    • Lista
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("formatBlock", "h3")}
+                    onMouseDown={(e) => e.preventDefault()}
                     title="Título"
                     style={{
-                      padding: "6px 10px",
-                      backgroundColor: editorState.titulo
-                        ? "#007bff"
-                        : "#e9ecef",
-                      color: editorState.titulo ? "white" : "black",
-                      border: "1px solid #ddd",
+                      padding: "8px 14px",
+                      backgroundColor: "white",
+                      color: "#333",
+                      border: "1px solid #ccc",
                       borderRadius: "4px",
                       cursor: "pointer",
                       fontWeight: "bold",
+                      fontSize: "16px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#e9ecef")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "white")
+                    }
+                  >
+                    Título
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => aplicarFormatacao("formatBlock", "p")}
+                    onMouseDown={(e) => e.preventDefault()}
+                    title="Parágrafo normal"
+                    style={{
+                      padding: "8px 14px",
+                      backgroundColor: "white",
+                      color: "#333",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                      cursor: "pointer",
                       fontSize: "14px",
+                      transition: "all 0.2s",
                     }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#e9ecef")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "white")
+                    }
                   >
-                    H3
-                  </button>
-
-                  <div
-                    style={{
-                      width: "1px",
-                      height: "24px",
-                      backgroundColor: "#ddd",
-                    }}
-                  />
-
-                  {/* Alinhamento */}
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("align-left")}
-                    title="Alinhar à esquerda"
-                    style={{
-                      padding: "6px 10px",
-                      backgroundColor:
-                        editorState.alinhamento === "left"
-                          ? "#007bff"
-                          : "#e9ecef",
-                      color:
-                        editorState.alinhamento === "left" ? "white" : "black",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "16px",
-                    }}
-                  >
-                    ⬅️
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("align-center")}
-                    title="Centralizar"
-                    style={{
-                      padding: "6px 10px",
-                      backgroundColor:
-                        editorState.alinhamento === "center"
-                          ? "#007bff"
-                          : "#e9ecef",
-                      color:
-                        editorState.alinhamento === "center"
-                          ? "white"
-                          : "black",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "16px",
-                    }}
-                  >
-                    ⬇️⬆️
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("align-right")}
-                    title="Alinhar à direita"
-                    style={{
-                      padding: "6px 10px",
-                      backgroundColor:
-                        editorState.alinhamento === "right"
-                          ? "#007bff"
-                          : "#e9ecef",
-                      color:
-                        editorState.alinhamento === "right" ? "white" : "black",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "16px",
-                    }}
-                  >
-                    ➡️
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => aplicarFormatacao("align-justify")}
-                    title="Justificar"
-                    style={{
-                      padding: "6px 10px",
-                      backgroundColor:
-                        editorState.alinhamento === "justify"
-                          ? "#007bff"
-                          : "#e9ecef",
-                      color:
-                        editorState.alinhamento === "justify"
-                          ? "white"
-                          : "black",
-                      border: "1px solid #ddd",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "16px",
-                    }}
-                  >
-                    ≡
+                    Parágrafo
                   </button>
                 </div>
 
-                {/* Editor contenteditable */}
+                {/* Editor de texto */}
                 <div
                   ref={editorRef}
                   contentEditable
                   suppressContentEditableWarning
                   onInput={handleEditorInput}
-                  onMouseUp={handleEditorMouseUp}
-                  onKeyUp={handleEditorMouseUp}
                   style={{
                     width: "100%",
-                    minHeight: "200px",
-                    padding: "12px",
+                    minHeight: "250px",
+                    padding: "15px",
                     borderRadius: "4px",
-                    border: "1px solid #ddd",
+                    border: "2px solid #ddd",
                     boxSizing: "border-box",
                     fontFamily: "inherit",
                     lineHeight: "1.6",
                     outline: "none",
                     overflowY: "auto",
+                    backgroundColor: "white",
                   }}
                   dangerouslySetInnerHTML={{ __html: formData.bio }}
                 />
                 <small
                   style={{ color: "#666", display: "block", marginTop: "8px" }}
                 >
-                  {formData.bio.length}/1000 caracteres
+                  Selecione o texto e use os botões acima para formatar. Escreva
+                  livremente sobre você, suas habilidades e experiências.
                 </small>
               </div>
 
@@ -603,7 +552,15 @@ export default function EditarPerfil() {
                   </label>
 
                   {curriculoAtual && (
-                    <div style={{ marginBottom: "10px" }}>
+                    <div
+                      style={{
+                        marginBottom: "15px",
+                        padding: "15px",
+                        backgroundColor: "#f8f9fa",
+                        borderRadius: "4px",
+                        border: "1px solid #ddd",
+                      }}
+                    >
                       <p
                         style={{
                           margin: "0 0 8px 0",
@@ -611,24 +568,8 @@ export default function EditarPerfil() {
                           color: "#666",
                         }}
                       >
-                        Currículo atual:
+                        Você já possui um currículo cadastrado
                       </p>
-                      <a
-                        href={curriculoAtual}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: "inline-block",
-                          padding: "8px 12px",
-                          backgroundColor: "#28a745",
-                          color: "white",
-                          textDecoration: "none",
-                          borderRadius: "4px",
-                          fontSize: "14px",
-                        }}
-                      >
-                        Baixar Currículo Atual
-                      </a>
                     </div>
                   )}
 
@@ -639,11 +580,13 @@ export default function EditarPerfil() {
                       color: "#666",
                     }}
                   >
-                    Enviar novo currículo:
+                    {curriculoAtual
+                      ? "Enviar novo currículo (substituirá o atual):"
+                      : "Enviar currículo:"}
                   </p>
                   <input
                     type="file"
-                    accept=".pdf"
+                    accept="application/pdf"
                     onChange={handleCurriculoChange}
                     style={{
                       padding: "10px",
@@ -653,44 +596,35 @@ export default function EditarPerfil() {
                       boxSizing: "border-box",
                     }}
                   />
-                  <small style={{ color: "#666" }}>PDF - Máximo 10MB</small>
+                  <small style={{ color: "#666" }}>
+                    Apenas arquivos PDF - Máximo 10MB
+                  </small>
                 </div>
               )}
 
-              {/* Botões */}
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "flex-end",
+                  marginTop: "30px",
+                }}
+              >
                 <button
                   type="submit"
                   disabled={salvando}
                   style={{
-                    flex: 1,
-                    padding: "12px",
-                    backgroundColor: "#007bff",
+                    padding: "12px 24px",
+                    backgroundColor: salvando ? "#6c757d" : "#007bff",
                     color: "white",
                     border: "none",
                     borderRadius: "4px",
                     cursor: salvando ? "not-allowed" : "pointer",
-                    opacity: salvando ? 0.6 : 1,
-                    fontWeight: "bold",
+                    fontSize: "16px",
+                    fontWeight: "500",
                   }}
                 >
                   {salvando ? "Salvando..." : "Salvar Alterações"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    backgroundColor: "#6c757d",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Cancelar
                 </button>
               </div>
             </form>
