@@ -1,6 +1,7 @@
 const express = require("express");
 const { pool } = require("../config/supabaseClient");
 const autenticar = require("../middleware/authMiddleware");
+const { enviarEmail } = require("../config/email");
 
 const router = express.Router();
 
@@ -224,7 +225,7 @@ router.post("/:id/escolher-vencedor", async (req, res) => {
     const usuarioId = req.usuario.id;
 
     const desafioResultado = await pool.query(
-      "SELECT usuario_id FROM desafios WHERE id = $1",
+      "SELECT usuario_id, titulo FROM desafios WHERE id = $1",
       [id]
     );
 
@@ -240,6 +241,58 @@ router.post("/:id/escolher-vencedor", async (req, res) => {
       "UPDATE desafios SET vencedor_proposta_id = $1, status = $2 WHERE id = $3",
       [propostaId, "concluido", id]
     );
+
+    const vencedorResultado = await pool.query(
+      `SELECT u.email, u.nome, p.valor 
+       FROM propostas p 
+       JOIN usuarios u ON p.usuario_id = u.id 
+       WHERE p.id = $1`,
+      [propostaId]
+    );
+
+    if (vencedorResultado.rows.length > 0) {
+      const vencedor = vencedorResultado.rows[0];
+      const tituloDesafio = desafioResultado.rows[0].titulo;
+
+      try {
+        await enviarEmail(
+          vencedor.email,
+          "Parabéns! Você venceu um desafio - ConectaDev",
+          `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                <h1 style="color: #27ae60; margin-bottom: 20px;">🏆 Parabéns, ${
+                  vencedor.nome
+                }!</h1>
+                <p style="font-size: 16px; line-height: 1.6; color: #333;">
+                  Você foi escolhido como <strong>vencedor</strong> do desafio:
+                </p>
+                <div style="background-color: #e8f5e9; padding: 15px; border-left: 4px solid #27ae60; margin: 20px 0; border-radius: 4px;">
+                  <h2 style="margin: 0 0 10px 0; color: #2c3e50;">${tituloDesafio}</h2>
+                  <p style="margin: 0; font-size: 18px; font-weight: 600; color: #27ae60;">
+                    Valor: R$ ${Number(vencedor.valor).toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
+                <p style="font-size: 16px; line-height: 1.6; color: #333;">
+                  O contratante escolheu sua proposta! Acesse a plataforma ConectaDev para ver os detalhes e entrar em contato com o contratante.
+                </p>
+                <a href="http://localhost:5173/desafio/${id}" style="display: inline-block; margin-top: 20px; padding: 12px 30px; background-color: #27ae60; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                  Ver Desafio
+                </a>
+                <p style="margin-top: 30px; font-size: 14px; color: #7f8c8d;">
+                  Equipe ConectaDev
+                </p>
+              </div>
+            </div>
+          `
+        );
+      } catch (emailError) {
+        console.error("[v0] Erro ao enviar e-mail ao vencedor:", emailError);
+        // Não falha a requisição se o e-mail falhar
+      }
+    }
 
     res.json({ mensagem: "Vencedor escolhido com sucesso" });
   } catch (erro) {

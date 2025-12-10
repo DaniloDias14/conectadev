@@ -178,9 +178,62 @@ export default function Perfil() {
 
   const isOwnProfile = usuarioLogado?.id === usuario.id;
 
-  const fotoPerfilUrl = usuario.foto_perfil
-    ? `http://localhost:3001/${usuario.foto_perfil.replace("public/", "")}`
-    : "http://localhost:3001/FotoPerfil.jpg";
+  const renderFotoPerfil = () => (
+    <div style={{ position: "relative", width: "160px", height: "160px" }}>
+      <img
+        src="http://localhost:3001/FotoPerfil.jpg"
+        alt="Foto padrão"
+        style={{
+          width: "160px",
+          height: "160px",
+          borderRadius: "12px",
+          objectFit: "cover",
+          backgroundColor: "#f0f0f0",
+          border: "3px solid #e8e8e8",
+          position: "absolute",
+        }}
+      />
+      {usuario.foto_perfil && (
+        <img
+          src={`http://localhost:3001/${usuario.foto_perfil.replace(
+            "public/",
+            ""
+          )}`}
+          alt={usuario.nome}
+          style={{
+            width: "160px",
+            height: "160px",
+            borderRadius: "12px",
+            objectFit: "cover",
+            backgroundColor: "#f0f0f0",
+            border: "3px solid #e8e8e8",
+            position: "absolute",
+          }}
+        />
+      )}
+      {isOwnProfile && usuario.foto_perfil && (
+        <button
+          onClick={removerFoto}
+          style={{
+            position: "absolute",
+            top: "8px",
+            right: "8px",
+            padding: "6px 12px",
+            backgroundColor: "#e74c3c",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "600",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+          }}
+        >
+          Remover
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -207,42 +260,7 @@ export default function Perfil() {
             }}
           >
             <div style={{ flexShrink: 0, position: "relative" }}>
-              <img
-                src={fotoPerfilUrl || "/placeholder.svg"}
-                alt={usuario.nome}
-                style={{
-                  width: "160px",
-                  height: "160px",
-                  borderRadius: "12px",
-                  objectFit: "cover",
-                  backgroundColor: "#f0f0f0",
-                  border: "3px solid #e8e8e8",
-                }}
-                onError={(e) => {
-                  e.target.src = "http://localhost:3001/FotoPerfil.jpg";
-                }}
-              />
-              {isOwnProfile && usuario.foto_perfil && (
-                <button
-                  onClick={removerFoto}
-                  style={{
-                    position: "absolute",
-                    top: "8px",
-                    right: "8px",
-                    padding: "6px 12px",
-                    backgroundColor: "#e74c3c",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                  }}
-                >
-                  Remover
-                </button>
-              )}
+              {renderFotoPerfil()}
             </div>
 
             <div style={{ flex: 1 }}>

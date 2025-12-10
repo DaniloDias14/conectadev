@@ -38,11 +38,11 @@ export default function Header() {
               `http://localhost:3001/${fotoUrl.replace("public/", "")}`
             );
           } else {
-            setFotoPerfil("/FotoPerfil.jpg");
+            setFotoPerfil(null);
           }
         } catch (erro) {
           console.error("Erro ao carregar foto do perfil:", erro);
-          setFotoPerfil("/FotoPerfil.jpg");
+          setFotoPerfil(null);
         }
       }
     };
@@ -82,6 +82,35 @@ export default function Header() {
     document.addEventListener("mousedown", handleClickFora);
     return () => document.removeEventListener("mousedown", handleClickFora);
   }, []);
+
+  const renderFotoPerfil = (fotoUrl, alt, tamanho = "30px") => (
+    <div style={{ position: "relative", width: tamanho, height: tamanho }}>
+      <img
+        src="http://localhost:3001/FotoPerfil.jpg"
+        alt="Foto padrão"
+        style={{
+          width: tamanho,
+          height: tamanho,
+          borderRadius: "50%",
+          objectFit: "cover",
+          position: "absolute",
+        }}
+      />
+      {fotoUrl && (
+        <img
+          src={fotoUrl || "/placeholder.svg"}
+          alt={alt}
+          style={{
+            width: tamanho,
+            height: tamanho,
+            borderRadius: "50%",
+            objectFit: "cover",
+            position: "absolute",
+          }}
+        />
+      )}
+    </div>
+  );
 
   return (
     <header
@@ -174,26 +203,15 @@ export default function Header() {
                     (e.currentTarget.style.backgroundColor = "white")
                   }
                 >
-                  <img
-                    src={
-                      user.foto_perfil
-                        ? `http://localhost:3001/${user.foto_perfil.replace(
-                            "public/",
-                            ""
-                          )}`
-                        : "/FotoPerfil.jpg"
-                    }
-                    alt={user.nome}
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                    }}
-                    onError={(e) => {
-                      e.target.src = "/FotoPerfil.jpg";
-                    }}
-                  />
+                  {renderFotoPerfil(
+                    user.foto_perfil
+                      ? `http://localhost:3001/${user.foto_perfil.replace(
+                          "public/",
+                          ""
+                        )}`
+                      : null,
+                    user.nome
+                  )}
                   <div>
                     <strong style={{ display: "block" }}>{user.nome}</strong>
                     <small style={{ color: "#666" }}>
@@ -244,19 +262,7 @@ export default function Header() {
                   gap: "8px",
                 }}
               >
-                <img
-                  src={fotoPerfil || "/FotoPerfil.jpg"}
-                  alt="Foto de perfil"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "4px",
-                    objectFit: "cover",
-                  }}
-                  onError={(e) => {
-                    e.target.src = "/FotoPerfil.jpg";
-                  }}
-                />
+                {renderFotoPerfil(fotoPerfil, "Foto de perfil", "28px")}
                 Meu Perfil
               </button>
               <button

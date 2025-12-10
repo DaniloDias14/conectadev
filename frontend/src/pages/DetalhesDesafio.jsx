@@ -7,6 +7,7 @@ import api from "../services/api";
 import Modal from "../components/Modal";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import CountdownTimer from "../components/CountdownTimer";
 
 export default function DetalhesDesafio() {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export default function DetalhesDesafio() {
   const [erro, setErro] = useState("");
   const [propostas, setPropostas] = useState([]);
   const [mostrarPropostas, setMostrarPropostas] = useState(false);
+  const [desafioExpirado, setDesafioExpirado] = useState(false);
   const { usuario, token } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -110,7 +112,6 @@ export default function DetalhesDesafio() {
       await api.post(`/desafios/${id}/escolher-vencedor`, { propostaId });
       alert("Vencedor escolhido com sucesso!");
 
-      // Recarregar dados
       const response = await api.get(`/desafios/${id}`);
       setDesafio(response.data.desafio);
     } catch (err) {
@@ -127,7 +128,8 @@ export default function DetalhesDesafio() {
   if (!desafio)
     return <div style={{ padding: "20px" }}>Desafio não encontrado</div>;
 
-  const estaExpirado = new Date(desafio.expira_em) < new Date();
+  const estaExpirado =
+    new Date(desafio.expira_em) < new Date() || desafioExpirado;
   const estaAtivo = desafio.status === "ativo" && !estaExpirado;
   const estaConcluido = desafio.status === "concluido";
   const ehContratante =
@@ -169,6 +171,37 @@ export default function DetalhesDesafio() {
       </div>
     ) : null;
 
+  const renderFotoPerfil = (fotoUrl, alt, tamanho = "50px") => (
+    <div style={{ position: "relative", width: tamanho, height: tamanho }}>
+      <img
+        src="http://localhost:3001/FotoPerfil.jpg"
+        alt="Foto padrão"
+        style={{
+          width: tamanho,
+          height: tamanho,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "2px solid #e0e0e0",
+          position: "absolute",
+        }}
+      />
+      {fotoUrl && (
+        <img
+          src={`http://localhost:3001/${fotoUrl.replace("public/", "")}`}
+          alt={alt}
+          style={{
+            width: tamanho,
+            height: tamanho,
+            borderRadius: "50%",
+            objectFit: "cover",
+            border: "2px solid #e0e0e0",
+            position: "absolute",
+          }}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div
       style={{
@@ -209,19 +242,7 @@ export default function DetalhesDesafio() {
             }}
             onClick={() => navigate(`/perfil/${desafio.usuario_id}`)}
           >
-            <img
-              src={
-                desafio.usuario_foto || "http://localhost:3001/FotoPerfil.jpg"
-              }
-              alt={desafio.usuario_nome}
-              style={{
-                width: "50px",
-                height: "50px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "2px solid #e0e0e0",
-              }}
-            />
+            {renderFotoPerfil(desafio.usuario_foto, desafio.usuario_nome)}
             <div>
               <p
                 style={{
@@ -239,41 +260,61 @@ export default function DetalhesDesafio() {
             </div>
           </div>
 
-          {!estaAtivo && (
-            <div
-              style={{
-                backgroundColor: estaExpirado
-                  ? "#fff3cd"
-                  : estaConcluido
-                  ? "#d4edda"
-                  : "#f8d7da",
-                color: estaExpirado
-                  ? "#856404"
-                  : estaConcluido
-                  ? "#155724"
-                  : "#721c24",
-                padding: "15px 20px",
-                borderRadius: "8px",
-                marginBottom: "25px",
-                border: `2px solid ${
-                  estaExpirado
-                    ? "#ffc107"
+          <div style={{ marginBottom: "20px" }}>
+            {estaAtivo ? (
+              <div
+                style={{
+                  backgroundColor: "#e8f5e9",
+                  padding: "15px 20px",
+                  borderRadius: "8px",
+                  border: "2px solid #4caf50",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span
+                  style={{
+                    fontWeight: "600",
+                    color: "#2e7d32",
+                    fontSize: "15px",
+                  }}
+                >
+                  ✓ Desafio Ativo
+                </span>
+                <CountdownTimer
+                  expiraEm={desafio.expira_em}
+                  onExpire={() => setDesafioExpirado(true)}
+                  tamanho="normal"
+                />
+              </div>
+            ) : (
+              <div
+                style={{
+                  backgroundColor: estaExpirado
+                    ? "#fff3cd"
                     : estaConcluido
-                    ? "#28a745"
-                    : "#dc3545"
-                }`,
-                fontSize: "15px",
-                fontWeight: "600",
-                textAlign: "center",
-              }}
-            >
-              {estaExpirado
-                ? "⏱ Este desafio expirou"
-                : estaConcluido
-                ? "✓ Desafio concluído"
-                : "Desafio não está ativo"}
-            </div>
-          )}
+                    ? "#d4edda"
+                    : "#f8d7da",
+                  color: estaExpirado
+                    ? "#856404"
+                    : estaConcluido
+                    ? "#155724"
+                    : "#721c24",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  marginBottom: "20px",
+                  fontSize: "14px",
+                }}
+              >
+                {estaExpirado
+                  ? "⏱ Este desafio expirou"
+                  : estaConcluido
+                  ? "✓ Desafio concluído"
+                  : "Desafio não está ativo"}
+              </div>
+            )}
+          </div>
 
           <h1
             style={{ marginBottom: "15px", color: "#2c3e50", fontSize: "28px" }}
@@ -487,20 +528,7 @@ export default function DetalhesDesafio() {
                 }}
                 onClick={() => navigate(`/perfil/${desafio.vencedor_id}`)}
               >
-                <img
-                  src={
-                    desafio.vencedor_foto ||
-                    "http://localhost:3001/FotoPerfil.jpg"
-                  }
-                  alt={desafio.vencedor_nome}
-                  style={{
-                    width: "50px",
-                    height: "50px",
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    border: "2px solid #28a745",
-                  }}
-                />
+                {renderFotoPerfil(desafio.vencedor_foto, desafio.vencedor_nome)}
                 <p
                   style={{
                     margin: 0,
@@ -596,19 +624,11 @@ export default function DetalhesDesafio() {
                               navigate(`/perfil/${proposta.usuario_id}`)
                             }
                           >
-                            <img
-                              src={
-                                proposta.usuario_foto ||
-                                "http://localhost:3001/FotoPerfil.jpg"
-                              }
-                              alt={proposta.usuario_nome}
-                              style={{
-                                width: "40px",
-                                height: "40px",
-                                borderRadius: "50%",
-                                objectFit: "cover",
-                              }}
-                            />
+                            {renderFotoPerfil(
+                              proposta.usuario_foto,
+                              proposta.usuario_nome,
+                              "40px"
+                            )}
                             <p style={{ margin: 0, fontWeight: "600" }}>
                               {proposta.usuario_nome}
                             </p>
@@ -767,216 +787,236 @@ export default function DetalhesDesafio() {
                 <div
                   key={com.id}
                   style={{
-                    padding: "16px",
+                    padding: "18px",
                     backgroundColor: "#f9f9f9",
-                    borderLeft: "4px solid #3498db",
+                    borderRadius: "8px",
                     marginBottom: "15px",
-                    borderRadius: "6px",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      marginBottom: "8px",
+                      alignItems: "flex-start",
+                      gap: "12px",
                     }}
                   >
-                    <img
-                      src={
-                        com.usuario_foto ||
-                        "http://localhost:3001/FotoPerfil.jpg"
-                      }
-                      alt={com.usuario_nome}
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "50%",
-                        objectFit: "cover",
-                      }}
-                    />
-                    <p
-                      style={{ margin: 0, fontWeight: "600", color: "#2c3e50" }}
-                    >
-                      {com.usuario_nome}
-                    </p>
-                    <small style={{ color: "#999" }}>
-                      {new Date(com.criado_em).toLocaleDateString("pt-BR")}
-                    </small>
-                  </div>
-                  <p
-                    style={{
-                      margin: "0 0 10px 0",
-                      color: "#333",
-                      lineHeight: "1.5",
-                    }}
-                  >
-                    {com.mensagem}
-                  </p>
-
-                  {estaAtivo && (
-                    <button
-                      onClick={() =>
-                        setComentarioRespondendo(
-                          comentarioRespondendo === com.id ? null : com.id
-                        )
-                      }
-                      style={{
-                        backgroundColor: "transparent",
-                        border: "none",
-                        color: "#3498db",
-                        cursor: "pointer",
-                        fontSize: "13px",
-                        fontWeight: "600",
-                        padding: "4px 0",
-                      }}
-                      disabled={enviandoComentario}
-                    >
-                      {comentarioRespondendo === com.id
-                        ? "Cancelar"
-                        : "Responder Comentário"}
-                    </button>
-                  )}
-
-                  {comentarioRespondendo === com.id && (
-                    <div style={{ marginTop: "12px", paddingLeft: "20px" }}>
-                      <textarea
-                        value={textoResposta}
-                        onChange={(e) => {
-                          if (e.target.value.length <= 250) {
-                            setTextoResposta(e.target.value);
-                          }
-                        }}
-                        maxLength="250"
-                        placeholder="Escreva sua resposta..."
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          border: "2px solid #e0e0e0",
-                          borderRadius: "6px",
-                          fontSize: "13px",
-                          minHeight: "70px",
-                          boxSizing: "border-box",
-                          resize: "vertical",
-                          fontFamily: "inherit",
-                        }}
-                        disabled={enviandoComentario}
-                      />
+                    {renderFotoPerfil(
+                      com.usuario_foto,
+                      com.usuario_nome,
+                      "36px"
+                    )}
+                    <div style={{ flex: 1 }}>
                       <div
                         style={{
                           display: "flex",
-                          justifyContent: "space-between",
-                          marginTop: "6px",
+                          alignItems: "center",
+                          gap: "10px",
+                          marginBottom: "8px",
                         }}
                       >
-                        <small
+                        <p
                           style={{
-                            color:
-                              textoResposta.length === 250
-                                ? "#e74c3c"
-                                : "#7f8c8d",
+                            margin: 0,
+                            fontWeight: "600",
+                            color: "#2c3e50",
+                            fontSize: "14px",
                           }}
                         >
-                          {textoResposta.length}/250
-                        </small>
-                        <button
-                          onClick={() => handleEnviarResposta(com.id)}
-                          disabled={enviandoComentario || !textoResposta.trim()}
+                          {com.usuario_nome}
+                        </p>
+                        <p
                           style={{
-                            padding: "8px 16px",
-                            backgroundColor: enviandoComentario
-                              ? "#95a5a6"
-                              : "#3498db",
-                            color: "white",
+                            margin: 0,
+                            fontSize: "12px",
+                            color: "#7f8c8d",
+                          }}
+                        >
+                          {new Date(com.criado_em).toLocaleString("pt-BR")}
+                        </p>
+                      </div>
+                      <p
+                        style={{
+                          margin: "0 0 10px 0",
+                          color: "#555",
+                          lineHeight: "1.5",
+                          whiteSpace: "pre-wrap",
+                          wordWrap: "break-word",
+                        }}
+                      >
+                        {com.mensagem}
+                      </p>
+
+                      {estaAtivo && (
+                        <button
+                          onClick={() =>
+                            setComentarioRespondendo(
+                              comentarioRespondendo === com.id ? null : com.id
+                            )
+                          }
+                          style={{
+                            backgroundColor: "transparent",
                             border: "none",
-                            borderRadius: "5px",
-                            cursor:
-                              enviandoComentario || !textoResposta.trim()
-                                ? "not-allowed"
-                                : "pointer",
+                            color: "#3498db",
+                            cursor: "pointer",
                             fontSize: "13px",
                             fontWeight: "600",
-                            opacity: !textoResposta.trim() ? 0.5 : 1,
+                            padding: "4px 0",
                           }}
+                          disabled={enviandoComentario}
                         >
-                          {enviandoComentario
-                            ? "Enviando..."
-                            : "Enviar Resposta"}
+                          {comentarioRespondendo === com.id
+                            ? "Cancelar"
+                            : "Responder Comentário"}
                         </button>
-                      </div>
-                    </div>
-                  )}
+                      )}
 
-                  {com.respostas && com.respostas.length > 0 && (
-                    <div
-                      style={{
-                        marginTop: "15px",
-                        paddingLeft: "20px",
-                        borderLeft: "2px solid #ddd",
-                      }}
-                    >
-                      {com.respostas.map((resposta) => (
-                        <div
-                          key={resposta.id}
-                          style={{
-                            padding: "12px",
-                            backgroundColor: "#ffffff",
-                            marginBottom: "10px",
-                            borderRadius: "6px",
-                            border: "1px solid #e8e8e8",
-                          }}
-                        >
+                      {comentarioRespondendo === com.id && (
+                        <div style={{ marginTop: "12px", paddingLeft: "20px" }}>
+                          <textarea
+                            value={textoResposta}
+                            onChange={(e) => {
+                              if (e.target.value.length <= 250) {
+                                setTextoResposta(e.target.value);
+                              }
+                            }}
+                            maxLength="250"
+                            placeholder="Escreva sua resposta..."
+                            style={{
+                              width: "100%",
+                              padding: "10px",
+                              border: "2px solid #e0e0e0",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              minHeight: "70px",
+                              boxSizing: "border-box",
+                              resize: "vertical",
+                              fontFamily: "inherit",
+                            }}
+                            disabled={enviandoComentario}
+                          />
                           <div
                             style={{
                               display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              marginBottom: "6px",
+                              justifyContent: "space-between",
+                              marginTop: "6px",
                             }}
                           >
-                            <img
-                              src={
-                                resposta.usuario_foto ||
-                                "http://localhost:3001/FotoPerfil.jpg"
-                              }
-                              alt={resposta.usuario_nome}
+                            <small
                               style={{
-                                width: "28px",
-                                height: "28px",
-                                borderRadius: "50%",
-                                objectFit: "cover",
-                              }}
-                            />
-                            <p
-                              style={{
-                                margin: 0,
-                                fontWeight: "600",
-                                fontSize: "14px",
-                                color: "#2c3e50",
+                                color:
+                                  textoResposta.length === 250
+                                    ? "#e74c3c"
+                                    : "#7f8c8d",
                               }}
                             >
-                              {resposta.usuario_nome}
-                            </p>
-                            <small style={{ color: "#999", fontSize: "12px" }}>
-                              {new Date(resposta.criado_em).toLocaleDateString(
-                                "pt-BR"
-                              )}
+                              {textoResposta.length}/250
                             </small>
+                            <button
+                              onClick={() => handleEnviarResposta(com.id)}
+                              disabled={
+                                enviandoComentario || !textoResposta.trim()
+                              }
+                              style={{
+                                padding: "8px 16px",
+                                backgroundColor: enviandoComentario
+                                  ? "#95a5a6"
+                                  : "#3498db",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "5px",
+                                cursor:
+                                  enviandoComentario || !textoResposta.trim()
+                                    ? "not-allowed"
+                                    : "pointer",
+                                fontSize: "13px",
+                                fontWeight: "600",
+                                opacity: !textoResposta.trim() ? 0.5 : 1,
+                              }}
+                            >
+                              {enviandoComentario
+                                ? "Enviando..."
+                                : "Enviar Resposta"}
+                            </button>
                           </div>
-                          <p
-                            style={{
-                              margin: 0,
-                              color: "#555",
-                              fontSize: "14px",
-                              lineHeight: "1.5",
-                            }}
-                          >
-                            {resposta.mensagem}
-                          </p>
                         </div>
-                      ))}
+                      )}
+
+                      {com.respostas && com.respostas.length > 0 && (
+                        <div style={{ marginTop: "12px", marginLeft: "20px" }}>
+                          {com.respostas.map((resposta) => (
+                            <div
+                              key={resposta.id}
+                              style={{
+                                padding: "12px",
+                                backgroundColor: "white",
+                                borderRadius: "6px",
+                                marginBottom: "8px",
+                                border: "1px solid #e8e8e8",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: "10px",
+                                }}
+                              >
+                                {renderFotoPerfil(
+                                  resposta.usuario_foto,
+                                  resposta.usuario_nome,
+                                  "30px"
+                                )}
+                                <div style={{ flex: 1 }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                      marginBottom: "6px",
+                                    }}
+                                  >
+                                    <p
+                                      style={{
+                                        margin: 0,
+                                        fontWeight: "600",
+                                        color: "#2c3e50",
+                                        fontSize: "13px",
+                                      }}
+                                    >
+                                      {resposta.usuario_nome}
+                                    </p>
+                                    <p
+                                      style={{
+                                        margin: 0,
+                                        fontSize: "11px",
+                                        color: "#7f8c8d",
+                                      }}
+                                    >
+                                      {new Date(
+                                        resposta.criado_em
+                                      ).toLocaleString("pt-BR")}
+                                    </p>
+                                  </div>
+                                  <p
+                                    style={{
+                                      margin: 0,
+                                      color: "#555",
+                                      fontSize: "13px",
+                                      lineHeight: "1.5",
+                                      whiteSpace: "pre-wrap",
+                                      wordWrap: "break-word",
+                                    }}
+                                  >
+                                    {resposta.mensagem}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))
             )}

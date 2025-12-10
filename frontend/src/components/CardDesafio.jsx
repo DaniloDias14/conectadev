@@ -2,12 +2,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import CountdownTimer from "./CountdownTimer";
 
 export default function CardDesafio({ desafio }) {
   const navigate = useNavigate();
   const [empresa, setEmpresa] = useState(null);
   const [menorProposta, setMenorProposta] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [desafioExpirado, setDesafioExpirado] = useState(false);
 
   useEffect(() => {
     const carregarDados = async () => {
@@ -31,7 +33,8 @@ export default function CardDesafio({ desafio }) {
     carregarDados();
   }, [desafio.usuario_id, desafio.id]);
 
-  const estaExpirado = new Date(desafio.expira_em) < new Date();
+  const estaExpirado =
+    new Date(desafio.expira_em) < new Date() || desafioExpirado;
   const estaAtivo = desafio.status === "ativo" && !estaExpirado;
 
   let caracteristicas = [];
@@ -73,19 +76,28 @@ export default function CardDesafio({ desafio }) {
           position: "absolute",
           top: "15px",
           right: "15px",
-          backgroundColor: estaAtivo
-            ? "#d4edda"
-            : estaExpirado
-            ? "#f8d7da"
-            : "#fff3cd",
-          color: estaAtivo ? "#155724" : estaExpirado ? "#721c24" : "#856404",
-          padding: "6px 12px",
-          borderRadius: "20px",
-          fontSize: "12px",
-          fontWeight: "600",
         }}
       >
-        {estaAtivo ? "✓ Ativo" : estaExpirado ? "⏱ Expirado" : desafio.status}
+        {estaAtivo ? (
+          <CountdownTimer
+            expiraEm={desafio.expira_em}
+            onExpire={() => setDesafioExpirado(true)}
+            tamanho="small"
+          />
+        ) : (
+          <div
+            style={{
+              backgroundColor: estaExpirado ? "#f8d7da" : "#fff3cd",
+              color: estaExpirado ? "#721c24" : "#856404",
+              padding: "6px 12px",
+              borderRadius: "20px",
+              fontSize: "12px",
+              fontWeight: "600",
+            }}
+          >
+            {estaExpirado ? "⏱ Expirado" : desafio.status}
+          </div>
+        )}
       </div>
 
       {!loading && empresa && (
@@ -99,17 +111,37 @@ export default function CardDesafio({ desafio }) {
             cursor: "pointer",
           }}
         >
-          <img
-            src={empresa.foto_perfil || "http://localhost:3001/FotoPerfil.jpg"}
-            alt={empresa.nome}
-            style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              objectFit: "cover",
-              border: "2px solid #e0e0e0",
-            }}
-          />
+          <div style={{ position: "relative", width: "40px", height: "40px" }}>
+            <img
+              src="http://localhost:3001/FotoPerfil.jpg"
+              alt="Foto padrão"
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: "2px solid #e0e0e0",
+                position: "absolute",
+              }}
+            />
+            {empresa.foto_perfil && (
+              <img
+                src={`http://localhost:3001/${empresa.foto_perfil.replace(
+                  "public/",
+                  ""
+                )}`}
+                alt={empresa.nome}
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "2px solid #e0e0e0",
+                  position: "absolute",
+                }}
+              />
+            )}
+          </div>
           <div>
             <p
               style={{

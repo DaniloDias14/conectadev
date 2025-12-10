@@ -54,8 +54,6 @@ export default function EditarPerfil() {
               ""
             )}`
           );
-        } else {
-          setFotoPreview("/FotoPerfil.jpg");
         }
 
         if (usuario.curriculo_pdf) {
@@ -244,21 +242,39 @@ export default function EditarPerfil() {
                 >
                   Foto de Perfil
                 </label>
-                <img
-                  src={fotoPreview || "/FotoPerfil.jpg"}
-                  alt="Preview"
+                <div
                   style={{
+                    position: "relative",
                     width: "150px",
                     height: "150px",
-                    borderRadius: "8px",
-                    objectFit: "cover",
                     marginBottom: "10px",
-                    display: "block",
                   }}
-                  onError={(e) => {
-                    e.target.src = "/FotoPerfil.jpg";
-                  }}
-                />
+                >
+                  <img
+                    src="http://localhost:3001/FotoPerfil.jpg"
+                    alt="Foto padrão"
+                    style={{
+                      width: "150px",
+                      height: "150px",
+                      borderRadius: "8px",
+                      objectFit: "cover",
+                      position: "absolute",
+                    }}
+                  />
+                  {fotoPreview && (
+                    <img
+                      src={fotoPreview || "/placeholder.svg"}
+                      alt="Preview"
+                      style={{
+                        width: "150px",
+                        height: "150px",
+                        borderRadius: "8px",
+                        objectFit: "cover",
+                        position: "absolute",
+                      }}
+                    />
+                  )}
+                </div>
                 <input
                   type="file"
                   accept="image/*"
