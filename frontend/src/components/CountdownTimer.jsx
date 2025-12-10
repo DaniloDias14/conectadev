@@ -17,23 +17,26 @@ export default function CountdownTimer({
       const diferenca = expiracao - agora;
 
       if (diferenca <= 0) {
-        setExpirou(true);
-        setTempoRestante(null);
-        if (onExpire) onExpire();
+        if (!expirou) {
+          setExpirou(true);
+          setTempoRestante(null);
+          if (onExpire) onExpire();
+        }
         return;
       }
 
+      const horas = Math.floor(diferenca / (1000 * 60 * 60));
       const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
       const segundos = Math.floor((diferenca % (1000 * 60)) / 1000);
 
-      setTempoRestante({ minutos, segundos });
+      setTempoRestante({ horas, minutos, segundos });
     };
 
     calcularTempoRestante();
     const intervalo = setInterval(calcularTempoRestante, 1000);
 
     return () => clearInterval(intervalo);
-  }, [expiraEm, onExpire]);
+  }, [expiraEm, onExpire, expirou]);
 
   if (expirou) {
     return (
@@ -68,10 +71,14 @@ export default function CountdownTimer({
     },
   };
 
-  return (
-    <span style={styles[tamanho]}>
-      ⏱ {tempoRestante.minutos}:
-      {tempoRestante.segundos.toString().padStart(2, "0")}
-    </span>
-  );
+  const formatarTempo = () => {
+    if (tempoRestante.horas > 0) {
+      return `⏱ ${tempoRestante.horas}h ${tempoRestante.minutos}m ${tempoRestante.segundos}s`;
+    }
+    return `⏱ ${tempoRestante.minutos}:${tempoRestante.segundos
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  return <span style={styles[tamanho]}>{formatarTempo()}</span>;
 }

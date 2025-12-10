@@ -6,13 +6,17 @@ import { AuthContext } from "../context/AuthContext";
 import api from "../services/api";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import CountdownTimer from "../components/CountdownTimer";
 
 export default function Perfil() {
   const { nomeUsuario } = useParams();
   const [usuario, setUsuario] = useState(null);
   const [desafios, setDesafios] = useState([]);
   const [propostas, setPropostas] = useState([]);
+  const [desafiosParticipando, setDesafiosParticipando] = useState([]);
+  const [desafiosVencidos, setDesafiosVencidos] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoDesafios, setCarregandoDesafios] = useState(true);
   const [erro, setErro] = useState("");
   const { usuario: usuarioLogado, token } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -35,51 +39,46 @@ export default function Perfil() {
         const usuario = response.data.usuario;
         setUsuario(usuario);
 
-        const isOwnProfile = usuario.id === usuarioLogado?.id;
-
         if (usuario.tipo === "contratante") {
-          try {
-            const desafiosResponse = await api.get(
-              `/perfil/${nomeUsuario}/desafios`
-            );
-            const todosDesafios = desafiosResponse.data.desafios || [];
+          const desafiosResponse = await api.get(
+            `/perfil/${nomeUsuario}/desafios`
+          );
+          setDesafios(desafiosResponse.data.desafios || []);
+        }
 
-            if (isOwnProfile) {
-              setDesafios(todosDesafios);
-            } else {
-              setDesafios(
-                todosDesafios.filter(
-                  (d) => d.status === "ativo" && !d.deletado_em
-                )
+        if (usuario.tipo === "proponente") {
+          const vencidosResponse = await api.get(
+            `/perfil/${nomeUsuario}/propostas-vencedoras`
+          );
+          setDesafiosVencidos(vencidosResponse.data.desafiosVencidos || []);
+
+          if (usuario && usuario.id === usuarioLogado?.id) {
+            try {
+              const participandoResponse = await api.get(
+                `/perfil/${nomeUsuario}/desafios-participando`
+              );
+              setDesafiosParticipando(
+                participandoResponse.data.desafiosParticipando || []
+              );
+            } catch (err) {
+              console.log(
+                "[v0] Não foi possível carregar desafios participando"
               );
             }
-          } catch (err) {
-            console.error("Erro ao carregar desafios:", err);
-            setDesafios([]);
           }
         }
 
-        if (isOwnProfile && usuario.tipo === "proponente") {
-          try {
-            const propostasResponse = await api.get(
-              `/propostas/minhas-propostas`
-            );
-            setPropostas(propostasResponse.data.propostas || []);
-          } catch (err) {
-            console.error("Erro ao carregar propostas:", err);
-            setPropostas([]);
-          }
-        }
+        setCarregandoDesafios(false);
       } catch (err) {
-        console.error("Erro ao carregar perfil:", err);
-        setErro("Perfil não encontrado");
+        setErro(err.response?.data?.mensagem || "Erro ao carregar perfil");
+        setCarregandoDesafios(false);
       } finally {
         setCarregando(false);
       }
     };
 
     carregarPerfil();
-  }, [nomeUsuario, token, navigate, usuarioLogado?.id]);
+  }, [nomeUsuario, usuarioLogado?.id]);
 
   const removerFoto = async () => {
     if (!window.confirm("Tem certeza que deseja remover sua foto de perfil?")) {
@@ -123,6 +122,21 @@ export default function Perfil() {
       alert("Erro ao baixar currículo. Verifique se o arquivo existe.");
     }
   };
+
+  const renderFotoPerfil = (foto, nome, tamanho) => (
+    <img
+      src={`http://localhost:3001/${foto.replace("public/", "")}`}
+      alt={nome}
+      style={{
+        width: tamanho,
+        height: tamanho,
+        borderRadius: "50%",
+        objectFit: "cover",
+        backgroundColor: "#f0f0f0",
+        border: "2px solid #e8e8e8",
+      }}
+    />
+  );
 
   if (carregando) {
     return (
@@ -178,63 +192,6 @@ export default function Perfil() {
 
   const isOwnProfile = usuarioLogado?.id === usuario.id;
 
-  const renderFotoPerfil = () => (
-    <div style={{ position: "relative", width: "160px", height: "160px" }}>
-      <img
-        src="http://localhost:3001/FotoPerfil.jpg"
-        alt="Foto padrão"
-        style={{
-          width: "160px",
-          height: "160px",
-          borderRadius: "12px",
-          objectFit: "cover",
-          backgroundColor: "#f0f0f0",
-          border: "3px solid #e8e8e8",
-          position: "absolute",
-        }}
-      />
-      {usuario.foto_perfil && (
-        <img
-          src={`http://localhost:3001/${usuario.foto_perfil.replace(
-            "public/",
-            ""
-          )}`}
-          alt={usuario.nome}
-          style={{
-            width: "160px",
-            height: "160px",
-            borderRadius: "12px",
-            objectFit: "cover",
-            backgroundColor: "#f0f0f0",
-            border: "3px solid #e8e8e8",
-            position: "absolute",
-          }}
-        />
-      )}
-      {isOwnProfile && usuario.foto_perfil && (
-        <button
-          onClick={removerFoto}
-          style={{
-            position: "absolute",
-            top: "8px",
-            right: "8px",
-            padding: "6px 12px",
-            backgroundColor: "#e74c3c",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: "600",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-          }}
-        >
-          Remover
-        </button>
-      )}
-    </div>
-  );
-
   return (
     <div
       style={{
@@ -260,7 +217,59 @@ export default function Perfil() {
             }}
           >
             <div style={{ flexShrink: 0, position: "relative" }}>
-              {renderFotoPerfil()}
+              {usuario.foto_perfil ? (
+                <img
+                  src={`http://localhost:3001/${usuario.foto_perfil.replace(
+                    "public/",
+                    ""
+                  )}`}
+                  alt={usuario.nome}
+                  style={{
+                    width: "160px",
+                    height: "160px",
+                    borderRadius: "12px",
+                    objectFit: "cover",
+                    backgroundColor: "#f0f0f0",
+                    border: "3px solid #e8e8e8",
+                    position: "absolute",
+                  }}
+                />
+              ) : (
+                <img
+                  src="http://localhost:3001/FotoPerfil.jpg"
+                  alt="Foto padrão"
+                  style={{
+                    width: "160px",
+                    height: "160px",
+                    borderRadius: "12px",
+                    objectFit: "cover",
+                    backgroundColor: "#f0f0f0",
+                    border: "3px solid #e8e8e8",
+                    position: "absolute",
+                  }}
+                />
+              )}
+              {isOwnProfile && usuario.foto_perfil && (
+                <button
+                  onClick={removerFoto}
+                  style={{
+                    position: "absolute",
+                    top: "8px",
+                    right: "8px",
+                    padding: "6px 12px",
+                    backgroundColor: "#e74c3c",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  Remover
+                </button>
+              )}
             </div>
 
             <div style={{ flex: 1 }}>
@@ -511,6 +520,201 @@ export default function Perfil() {
                         </p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Desafios Vencidos - Público */}
+              {desafiosVencidos.length > 0 && (
+                <div style={{ marginTop: "30px" }}>
+                  <h2
+                    style={{
+                      fontSize: "20px",
+                      marginBottom: "15px",
+                      color: "#27ae60",
+                    }}
+                  >
+                    🏆 Desafios Vencidos ({desafiosVencidos.length})
+                  </h2>
+                  <div style={{ display: "grid", gap: "15px" }}>
+                    {desafiosVencidos.map((desafio) => (
+                      <div
+                        key={desafio.id}
+                        onClick={() => navigate(`/desafio/${desafio.id}`)}
+                        style={{
+                          backgroundColor: "#f9f9f9",
+                          padding: "20px",
+                          borderRadius: "8px",
+                          border: "2px solid #27ae60",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <h3 style={{ marginTop: 0, color: "#2c3e50" }}>
+                          {desafio.titulo}
+                        </h3>
+                        <p
+                          style={{
+                            color: "#555",
+                            fontSize: "14px",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          {desafio.descricao.substring(0, 150)}...
+                        </p>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "18px",
+                              fontWeight: "700",
+                              color: "#27ae60",
+                            }}
+                          >
+                            R${" "}
+                            {Number(desafio.valor_vencedor).toLocaleString(
+                              "pt-BR",
+                              { minimumFractionDigits: 2 }
+                            )}
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            {renderFotoPerfil(
+                              desafio.contratante_foto,
+                              desafio.contratante_nome,
+                              "30px"
+                            )}
+                            <span style={{ fontSize: "14px", color: "#666" }}>
+                              {desafio.contratante_nome}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Desafios Participando - Apenas para o próprio usuário */}
+              {isOwnProfile && desafiosParticipando.length > 0 && (
+                <div style={{ marginTop: "30px" }}>
+                  <h2
+                    style={{
+                      fontSize: "20px",
+                      marginBottom: "15px",
+                      color: "#3498db",
+                    }}
+                  >
+                    📝 Desafios Participando ({desafiosParticipando.length})
+                  </h2>
+                  <div style={{ display: "grid", gap: "15px" }}>
+                    {desafiosParticipando.map((desafio) => {
+                      const estaExpirado =
+                        new Date(desafio.expira_em) < new Date();
+                      return (
+                        <div
+                          key={desafio.id}
+                          onClick={() => navigate(`/desafio/${desafio.id}`)}
+                          style={{
+                            backgroundColor: "#f9f9f9",
+                            padding: "20px",
+                            borderRadius: "8px",
+                            border: `2px solid ${
+                              estaExpirado ? "#e74c3c" : "#3498db"
+                            }`,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            <h3 style={{ margin: 0, color: "#2c3e50" }}>
+                              {desafio.titulo}
+                            </h3>
+                            {!estaExpirado && (
+                              <CountdownTimer
+                                expiraEm={desafio.expira_em}
+                                tamanho="small"
+                              />
+                            )}
+                            {estaExpirado && (
+                              <span
+                                style={{
+                                  color: "#e74c3c",
+                                  fontWeight: "600",
+                                  fontSize: "12px",
+                                }}
+                              >
+                                ⏱ Aguardando resultado
+                              </span>
+                            )}
+                          </div>
+                          <p
+                            style={{
+                              color: "#555",
+                              fontSize: "14px",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            {desafio.descricao.substring(0, 150)}...
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "16px",
+                                fontWeight: "600",
+                                color: "#3498db",
+                              }}
+                            >
+                              Minha proposta: R${" "}
+                              {Number(
+                                desafio.minha_proposta_valor
+                              ).toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </p>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              {renderFotoPerfil(
+                                desafio.contratante_foto,
+                                desafio.contratante_nome,
+                                "30px"
+                              )}
+                              <span style={{ fontSize: "14px", color: "#666" }}>
+                                {desafio.contratante_nome}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

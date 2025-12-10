@@ -119,6 +119,22 @@ export default function DetalhesDesafio() {
     }
   };
 
+  const handleExpiracao = async () => {
+    setDesafioExpirado(true);
+    try {
+      const response = await api.get(`/desafios/${id}`);
+      setDesafio(response.data.desafio);
+
+      if (response.data.desafio.usuario_id === usuario?.id) {
+        const propostasRes = await api.get(`/desafios/${id}/propostas`);
+        setPropostas(propostasRes.data.propostas || []);
+        setMostrarPropostas(true);
+      }
+    } catch (err) {
+      console.error("[v0] Erro ao atualizar desafio expirado:", err);
+    }
+  };
+
   if (carregando)
     return (
       <div style={{ padding: "20px", textAlign: "center" }}>Carregando...</div>
@@ -284,7 +300,7 @@ export default function DetalhesDesafio() {
                 </span>
                 <CountdownTimer
                   expiraEm={desafio.expira_em}
-                  onExpire={() => setDesafioExpirado(true)}
+                  onExpire={handleExpiracao}
                   tamanho="normal"
                 />
               </div>

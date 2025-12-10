@@ -224,6 +224,12 @@ router.post("/:id/escolher-vencedor", async (req, res) => {
     const { propostaId } = req.body;
     const usuarioId = req.usuario.id;
 
+    console.log("[v0] Escolhendo vencedor:", {
+      desafioId: id,
+      propostaId,
+      usuarioId,
+    });
+
     const desafioResultado = await pool.query(
       "SELECT usuario_id, titulo FROM desafios WHERE id = $1",
       [id]
@@ -254,10 +260,12 @@ router.post("/:id/escolher-vencedor", async (req, res) => {
       const vencedor = vencedorResultado.rows[0];
       const tituloDesafio = desafioResultado.rows[0].titulo;
 
+      console.log("[v0] Enviando e-mail para o vencedor:", vencedor.email);
+
       try {
         await enviarEmail(
           vencedor.email,
-          "Parabéns! Você venceu um desafio - ConectaDev",
+          "🏆 Parabéns! Você venceu um desafio - ConectaDev",
           `
             <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa;">
               <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
@@ -276,27 +284,36 @@ router.post("/:id/escolher-vencedor", async (req, res) => {
                   </p>
                 </div>
                 <p style="font-size: 16px; line-height: 1.6; color: #333;">
-                  O contratante escolheu sua proposta! Acesse a plataforma ConectaDev para ver os detalhes e entrar em contato com o contratante.
+                  O contratante escolheu sua proposta! Acesse a plataforma ConectaDev para ver os detalhes e entrar em contato com o contratante para combinar os próximos passos.
                 </p>
-                <a href="http://localhost:5173/desafio/${id}" style="display: inline-block; margin-top: 20px; padding: 12px 30px; background-color: #27ae60; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                <p style="font-size: 16px; line-height: 1.6; color: #333; margin-top: 20px;">
+                  <strong>Próximos passos:</strong><br>
+                  1. Entre em contato com o contratante através do e-mail dele disponível no desafio<br>
+                  2. Alinhe os detalhes do projeto e forma de pagamento<br>
+                  3. Comece a desenvolver o projeto conforme acordado
+                </p>
+                <a href="${
+                  process.env.FRONTEND_URL || "http://localhost:5173"
+                }/desafio/${id}" style="display: inline-block; margin-top: 20px; padding: 12px 30px; background-color: #27ae60; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">
                   Ver Desafio
                 </a>
                 <p style="margin-top: 30px; font-size: 14px; color: #7f8c8d;">
+                  Boa sorte no desenvolvimento!<br>
                   Equipe ConectaDev
                 </p>
               </div>
             </div>
           `
         );
+        console.log("[v0] E-mail enviado com sucesso!");
       } catch (emailError) {
         console.error("[v0] Erro ao enviar e-mail ao vencedor:", emailError);
-        // Não falha a requisição se o e-mail falhar
       }
     }
 
     res.json({ mensagem: "Vencedor escolhido com sucesso" });
   } catch (erro) {
-    console.error(erro);
+    console.error("[v0] Erro ao escolher vencedor:", erro);
     res.status(500).json({ mensagem: "Erro ao escolher vencedor" });
   }
 });

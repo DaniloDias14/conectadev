@@ -278,4 +278,84 @@ router.get("/:nomeUsuario/desafios", async (req, res) => {
   }
 });
 
+router.get("/:nomeUsuario/propostas-vencedoras", async (req, res) => {
+  try {
+    const { nomeUsuario } = req.params;
+
+    const usuarioResultado = await pool.query(
+      "SELECT id FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1)",
+      [nomeUsuario]
+    );
+
+    if (usuarioResultado.rows.length === 0) {
+      return res.status(404).json({ mensagem: "Usuário não encontrado" });
+    }
+
+    const usuarioId = usuarioResultado.rows[0].id;
+
+    // Buscar desafios onde o usuário ganhou
+    const desafiosVencidosResultado = await pool.query(
+      `SELECT d.*, u.nome as contratante_nome, u.foto_perfil as contratante_foto,
+       p.valor as valor_vencedor
+       FROM desafios d
+       JOIN propostas p ON d.vencedor_proposta_id = p.id
+       JOIN usuarios u ON d.usuario_id = u.id
+       WHERE p.usuario_id = $1 AND d.status = 'concluido'
+       ORDER BY d.atualizado_em DESC`,
+      [usuarioId]
+    );
+
+    res.json({ desafiosVencidos: desafiosVencidosResultado.rows });
+  } catch (erro) {
+    console.error("[v0] Erro ao obter propostas vencedoras:", erro);
+    res.status(500).json({ mensagem: "Erro ao obter propostas vencedoras" });
+  }
+});
+
+router.get(
+  "/:nomeUsuario/desafios-participando",
+  autenticar,
+  async (req, res) => {
+    try {
+      const { nomeUsuario } = req.params;
+      const usuarioLogadoId = req.usuario.id;
+
+      const usuarioResultado = await pool.query(
+        "SELECT id FROM usuarios WHERE LOWER(nome_usuario) = LOWER($1)",
+        [nomeUsuario]
+      );
+
+      if (usuarioResultado.rows.length === 0) {
+        return res.status(404).json({ mensagem: "Usuário não encontrado" });
+      }
+
+      const usuarioId = usuarioResultado.rows[0].id;
+
+      // Apenas o próprio usuário pode ver seus desafios em andamento
+      if (usuarioId !== usuarioLogadoId) {
+        return res
+          .status(403)
+          .json({ mensagem: "Sem permissão para visualizar" });
+      }
+
+      // Buscar desafios ativos onde o usuário tem proposta
+      const desafiosParticipandoResultado = await pool.query(
+        `SELECT d.*, u.nome as contratante_nome, u.foto_perfil as contratante_foto,
+       p.valor as minha_proposta_valor, p.id as minha_proposta_id
+       FROM desafios d
+       JOIN propostas p ON d.id = p.desafio_id
+       JOIN usuarios u ON d.usuario_id = u.id
+       WHERE p.usuario_id = $1 AND d.status IN ('ativo', 'expirado') AND d.deletado_em IS NULL
+       ORDER BY d.expira_em ASC`,
+        [usuarioId]
+      );
+
+      res.json({ desafiosParticipando: desafiosParticipandoResultado.rows });
+    } catch (erro) {
+      console.error("[v0] Erro ao obter desafios participando:", erro);
+      res.status(500).json({ mensagem: "Erro ao obter desafios participando" });
+    }
+  }
+);
+
 module.exports = router;
