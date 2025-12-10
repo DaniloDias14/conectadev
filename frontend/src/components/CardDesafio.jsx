@@ -51,7 +51,7 @@ export default function CardDesafio({ desafio }) {
 
   const handleClickEmpresa = (e) => {
     e.stopPropagation();
-    navigate(`/perfil/${desafio.usuario_id}`);
+    navigate(`/perfil/@${desafio.nome_usuario}`);
   };
 
   return (

@@ -43,9 +43,9 @@ router.get("/:id", async (req, res) => {
        (SELECT u2.foto_perfil FROM propostas p 
         JOIN usuarios u2 ON p.usuario_id = u2.id 
         WHERE p.id = d.vencedor_proposta_id) as vencedor_foto,
-       (SELECT u2.id FROM propostas p 
+       (SELECT u2.nome_usuario FROM propostas p 
         JOIN usuarios u2 ON p.usuario_id = u2.id 
-        WHERE p.id = d.vencedor_proposta_id) as vencedor_id
+        WHERE p.id = d.vencedor_proposta_id) as vencedor_nome_usuario
        FROM desafios d 
        JOIN usuarios u ON d.usuario_id = u.id
        WHERE d.id = $1 AND d.deletado_em IS NULL`,
@@ -58,7 +58,7 @@ router.get("/:id", async (req, res) => {
 
     const comentariosResultado = await pool.query(
       `SELECT c.id, c.mensagem, c.criado_em, c.comentario_pai_id,
-       u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.id as usuario_id
+       u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.id as usuario_id, u.nome_usuario as usuario_nome_usuario
        FROM comentarios c 
        JOIN usuarios u ON c.usuario_id = u.id
        WHERE c.desafio_id = $1 
@@ -126,10 +126,9 @@ router.post("/", async (req, res) => {
         .json({ mensagem: "Orçamento deve ser maior que 0" });
     }
 
-    // Calcular data de expiração no servidor usando NOW() do Supabase
     const resultado = await pool.query(
-      `INSERT INTO desafios (usuario_id, titulo, descricao, requisitos, caracteristicas, orcamento, expira_em, minutos_expiracao) 
-       VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '${Number.parseInt(
+      `INSERT INTO desafios (usuario_id, titulo, descricao, requisitos, caracteristicas, orcamento, criado_em, expira_em, minutos_expiracao) 
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW() + INTERVAL '${Number.parseInt(
          minutos_expiracao
        )} minutes', $7) 
        RETURNING *`,
@@ -144,7 +143,13 @@ router.post("/", async (req, res) => {
       ]
     );
 
-    console.log("[v0] Desafio criado:", resultado.rows[0]);
+    console.log("[v0] Desafio criado:", {
+      id: resultado.rows[0].id,
+      criado_em: resultado.rows[0].criado_em,
+      expira_em: resultado.rows[0].expira_em,
+      minutos_expiracao: minutos_expiracao,
+    });
+
     res.status(201).json({ desafio: resultado.rows[0] });
   } catch (erro) {
     console.error("[v0] Erro ao criar desafio:", erro);
@@ -288,12 +293,6 @@ router.post("/:id/escolher-vencedor", async (req, res) => {
                 <p style="font-size: 16px; line-height: 1.6; color: #333;">
                   O contratante escolheu sua proposta! Acesse a plataforma ConectaDev para ver os detalhes e entrar em contato com o contratante para combinar os próximos passos.
                 </p>
-                <p style="font-size: 16px; line-height: 1.6; color: #333; margin-top: 20px;">
-                  <strong>Próximos passos:</strong><br>
-                  1. Entre em contato com o contratante através do e-mail dele disponível no desafio<br>
-                  2. Alinhe os detalhes do projeto e forma de pagamento<br>
-                  3. Comece a desenvolver o projeto conforme acordado
-                </p>
                 <a href="${
                   process.env.FRONTEND_URL || "http://localhost:5173"
                 }/desafio/${id}" style="display: inline-block; margin-top: 20px; padding: 12px 30px; background-color: #27ae60; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">
@@ -359,7 +358,7 @@ router.get("/:id/propostas", async (req, res) => {
     }
 
     const resultado = await pool.query(
-      `SELECT p.*, u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.id as usuario_id
+      `SELECT p.*, u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.id as usuario_id, u.nome_usuario as usuario_nome_usuario
        FROM propostas p
        JOIN usuarios u ON p.usuario_id = u.id
        WHERE p.desafio_id = $1

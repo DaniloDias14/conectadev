@@ -38,6 +38,12 @@ export default function DetalhesDesafio() {
         setDesafio(response.data.desafio);
         setComentarios(response.data.comentarios || []);
 
+        const estaExpirado =
+          new Date(response.data.desafio.expira_em) < new Date();
+        if (estaExpirado) {
+          setDesafioExpirado(true);
+        }
+
         if (
           usuario?.tipo === "contratante" &&
           response.data.desafio.usuario_id === usuario.id
@@ -114,21 +120,29 @@ export default function DetalhesDesafio() {
 
       const response = await api.get(`/desafios/${id}`);
       setDesafio(response.data.desafio);
+      setMostrarPropostas(false);
     } catch (err) {
       alert(err.response?.data?.mensagem || "Erro ao escolher vencedor");
     }
   };
 
   const handleExpiracao = async () => {
+    console.log("[v0] handleExpiracao chamado");
     setDesafioExpirado(true);
     try {
       const response = await api.get(`/desafios/${id}`);
       setDesafio(response.data.desafio);
 
-      if (response.data.desafio.usuario_id === usuario?.id) {
+      if (
+        response.data.desafio.usuario_id === usuario?.id &&
+        usuario?.tipo === "contratante"
+      ) {
         const propostasRes = await api.get(`/desafios/${id}/propostas`);
         setPropostas(propostasRes.data.propostas || []);
-        setMostrarPropostas(true);
+        console.log(
+          "[v0] Propostas carregadas:",
+          propostasRes.data.propostas.length
+        );
       }
     } catch (err) {
       console.error("[v0] Erro ao atualizar desafio expirado:", err);
@@ -157,35 +171,6 @@ export default function DetalhesDesafio() {
   } catch (e) {
     caracteristicas = desafio.caracteristicas ? [desafio.caracteristicas] : [];
   }
-
-  const OverlayBloqueio = () =>
-    enviandoComentario ? (
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.3)",
-          zIndex: 9999,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "30px",
-            borderRadius: "12px",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-          }}
-        >
-          <p style={{ margin: 0, fontSize: "16px" }}>Enviando comentário...</p>
-        </div>
-      </div>
-    ) : null;
 
   const renderFotoPerfil = (fotoUrl, alt, tamanho = "50px") => (
     <div style={{ position: "relative", width: tamanho, height: tamanho }}>
@@ -227,7 +212,35 @@ export default function DetalhesDesafio() {
         backgroundColor: "#f8f9fa",
       }}
     >
-      <OverlayBloqueio />
+      {enviandoComentario && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.3)",
+            zIndex: 9999,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "30px",
+              borderRadius: "12px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "16px" }}>
+              Enviando comentário...
+            </p>
+          </div>
+        </div>
+      )}
       <Header />
       <main
         style={{
@@ -256,7 +269,7 @@ export default function DetalhesDesafio() {
               borderBottom: "2px solid #f0f0f0",
               cursor: "pointer",
             }}
-            onClick={() => navigate(`/perfil/${desafio.usuario_id}`)}
+            onClick={() => navigate(`/perfil/@${desafio.nome_usuario}`)}
           >
             {renderFotoPerfil(desafio.usuario_foto, desafio.usuario_nome)}
             <div>
@@ -542,7 +555,9 @@ export default function DetalhesDesafio() {
                   gap: "12px",
                   cursor: "pointer",
                 }}
-                onClick={() => navigate(`/perfil/${desafio.vencedor_id}`)}
+                onClick={() =>
+                  navigate(`/perfil/@${desafio.vencedor_nome_usuario}`)
+                }
               >
                 {renderFotoPerfil(desafio.vencedor_foto, desafio.vencedor_nome)}
                 <p
@@ -589,18 +604,28 @@ export default function DetalhesDesafio() {
                 <button
                   onClick={() => setMostrarPropostas(!mostrarPropostas)}
                   style={{
-                    padding: "12px 24px",
+                    padding: "14px 28px",
                     backgroundColor: "#9c27b0",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
                     cursor: "pointer",
                     fontWeight: "600",
+                    fontSize: "16px",
                     marginBottom: "15px",
+                    transition: "background-color 0.3s",
                   }}
+                  onMouseEnter={(e) =>
+                    (e.target.style.backgroundColor = "#7b1fa2")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.target.style.backgroundColor = "#9c27b0")
+                  }
                 >
-                  {mostrarPropostas ? "Ocultar" : "Ver"} Propostas (
-                  {propostas.length})
+                  {mostrarPropostas
+                    ? "Ocultar Propostas"
+                    : "Selecionar Vencedor"}{" "}
+                  ({propostas.length} propostas)
                 </button>
 
                 {mostrarPropostas && (
@@ -637,7 +662,9 @@ export default function DetalhesDesafio() {
                               cursor: "pointer",
                             }}
                             onClick={() =>
-                              navigate(`/perfil/${proposta.usuario_id}`)
+                              navigate(
+                                `/perfil/@${proposta.usuario_nome_usuario}`
+                              )
                             }
                           >
                             {renderFotoPerfil(
@@ -685,7 +712,14 @@ export default function DetalhesDesafio() {
                             borderRadius: "6px",
                             cursor: "pointer",
                             fontWeight: "600",
+                            transition: "background-color 0.3s",
                           }}
+                          onMouseEnter={(e) =>
+                            (e.target.style.backgroundColor = "#229954")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.target.style.backgroundColor = "#27ae60")
+                          }
                         >
                           Escolher como Vencedor
                         </button>
@@ -803,28 +837,30 @@ export default function DetalhesDesafio() {
                 <div
                   key={comentario.id}
                   style={{
-                    backgroundColor: "#f9f9f9",
-                    padding: "18px",
-                    borderRadius: "8px",
-                    marginBottom: "15px",
-                    border: "1px solid #e8e8e8",
+                    marginBottom: "25px",
+                    paddingBottom: "20px",
+                    borderBottom: "1px solid #eeeeee",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       gap: "12px",
-                      marginBottom: "12px",
-                      cursor: "pointer",
                     }}
-                    onClick={() => navigate(`/perfil/${comentario.usuario_id}`)}
                   >
-                    {renderFotoPerfil(
-                      comentario.usuario_foto,
-                      comentario.usuario_nome,
-                      "40px"
-                    )}
+                    <div
+                      style={{ cursor: "pointer" }}
+                      onClick={() =>
+                        navigate(`/perfil/@${comentario.usuario_nome_usuario}`)
+                      }
+                    >
+                      {renderFotoPerfil(
+                        comentario.usuario_foto,
+                        comentario.usuario_nome,
+                        "45px"
+                      )}
+                    </div>
                     <div>
                       <p
                         style={{
@@ -838,18 +874,17 @@ export default function DetalhesDesafio() {
                       <p style={{ margin: 0, fontSize: "12px", color: "#888" }}>
                         {new Date(comentario.criado_em).toLocaleString("pt-BR")}
                       </p>
+                      <p
+                        style={{
+                          margin: "0 0 12px 0",
+                          color: "#444",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {comentario.mensagem}
+                      </p>
                     </div>
                   </div>
-
-                  <p
-                    style={{
-                      margin: "0 0 12px 0",
-                      color: "#444",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    {comentario.mensagem}
-                  </p>
 
                   {estaAtivo && (
                     <button
@@ -956,26 +991,30 @@ export default function DetalhesDesafio() {
                           borderRadius: "6px",
                           marginTop: "12px",
                           marginLeft: "25px",
-                          border: "1px solid #e0e0e0",
+                          borderLeft: "3px solid #e0e0e0",
                         }}
                       >
                         <div
                           style={{
                             display: "flex",
-                            alignItems: "center",
+                            alignItems: "flex-start",
                             gap: "10px",
-                            marginBottom: "10px",
-                            cursor: "pointer",
                           }}
-                          onClick={() =>
-                            navigate(`/perfil/${resposta.usuario_id}`)
-                          }
                         >
-                          {renderFotoPerfil(
-                            resposta.usuario_foto,
-                            resposta.usuario_nome,
-                            "35px"
-                          )}
+                          <div
+                            style={{ cursor: "pointer" }}
+                            onClick={() =>
+                              navigate(
+                                `/perfil/@${resposta.usuario_nome_usuario}`
+                              )
+                            }
+                          >
+                            {renderFotoPerfil(
+                              resposta.usuario_foto,
+                              resposta.usuario_nome,
+                              "35px"
+                            )}
+                          </div>
                           <div>
                             <p
                               style={{

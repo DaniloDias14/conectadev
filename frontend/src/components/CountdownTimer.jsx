@@ -12,18 +12,21 @@ export default function CountdownTimer({
 
   useEffect(() => {
     const calcularTempoRestante = () => {
-      const agora = new Date().getTime();
-      const expiracao = new Date(expiraEm).getTime();
-      const diferencaSegundos = Math.floor((expiracao - agora) / 1000);
+      const agora = new Date();
+      const expiracao = new Date(expiraEm);
+      const diferencaMs = expiracao.getTime() - agora.getTime();
+      const diferencaSegundos = Math.floor(diferencaMs / 1000);
 
-      console.log("[v0] Timer:", {
-        agora: new Date(agora).toISOString(),
-        expiracao: new Date(expiracao).toISOString(),
+      console.log("[v0] Timer debug:", {
+        agora: agora.toISOString(),
+        expiracao: expiracao.toISOString(),
+        diferencaMs,
         diferencaSegundos,
       });
 
       if (diferencaSegundos <= 0) {
         if (!expirou) {
+          console.log("[v0] Desafio expirado, chamando onExpire");
           setExpirou(true);
           setTempoRestante(null);
           if (onExpire) onExpire();
