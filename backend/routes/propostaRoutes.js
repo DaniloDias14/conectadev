@@ -19,9 +19,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    if (justificativa.length < 30 || justificativa.length > 2000) {
+    if (justificativa.length > 500) {
       return res.status(400).json({
-        mensagem: "Justificativa deve ter entre 30 e 2000 caracteres",
+        mensagem: "Justificativa deve ter no máximo 500 caracteres",
       });
     }
 
@@ -73,7 +73,6 @@ router.post("/", async (req, res) => {
           );
         } catch (emailError) {
           console.error("[v0] Erro ao enviar email:", emailError);
-          // Não falha a requisição se o email falhar
         }
       }
     }
@@ -114,7 +113,7 @@ router.put("/:id", async (req, res) => {
     // Verifica intervalo de 1 hora
     const ultimaAtualizacao = new Date(proposta.atualizado_em);
     const agora = new Date();
-    const diferenca = (agora - ultimaAtualizacao) / (1000 * 60); // em minutos
+    const diferenca = (agora - ultimaAtualizacao) / (1000 * 60);
 
     if (diferenca < 60) {
       return res.status(429).json({

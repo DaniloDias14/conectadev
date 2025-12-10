@@ -1,37 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
 import CountdownTimer from "./CountdownTimer";
 
 export default function CardDesafio({ desafio }) {
   const navigate = useNavigate();
-  const [empresa, setEmpresa] = useState(null);
-  const [menorProposta, setMenorProposta] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [desafioExpirado, setDesafioExpirado] = useState(false);
-
-  useEffect(() => {
-    const carregarDados = async () => {
-      try {
-        const [empresaRes, propostasRes] = await Promise.all([
-          api.get(`/perfil/${desafio.usuario_id}`),
-          api.get(`/propostas/desafio/${desafio.id}/menor`),
-        ]);
-
-        setEmpresa(empresaRes.data.usuario);
-        if (propostasRes.data.menorValor) {
-          setMenorProposta(propostasRes.data.menorValor);
-        }
-      } catch (err) {
-        console.error("[v0] Erro ao carregar dados:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    carregarDados();
-  }, [desafio.usuario_id, desafio.id]);
 
   const estaExpirado =
     new Date(desafio.expira_em) < new Date() || desafioExpirado;
@@ -43,6 +17,37 @@ export default function CardDesafio({ desafio }) {
   } catch (e) {
     caracteristicas = desafio.caracteristicas ? [desafio.caracteristicas] : [];
   }
+
+  const renderFotoPerfil = (fotoUrl, alt, tamanho = "40px") => (
+    <div style={{ position: "relative", width: tamanho, height: tamanho }}>
+      <img
+        src="http://localhost:3001/FotoPerfil.jpg"
+        alt="Foto padrão"
+        style={{
+          width: tamanho,
+          height: tamanho,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "2px solid #e0e0e0",
+          position: "absolute",
+        }}
+      />
+      {fotoUrl && (
+        <img
+          src={`http://localhost:3001/${fotoUrl.replace("public/", "")}`}
+          alt={alt}
+          style={{
+            width: tamanho,
+            height: tamanho,
+            borderRadius: "50%",
+            objectFit: "cover",
+            border: "2px solid #e0e0e0",
+            position: "absolute",
+          }}
+        />
+      )}
+    </div>
+  );
 
   const handleClickEmpresa = (e) => {
     e.stopPropagation();
@@ -100,65 +105,33 @@ export default function CardDesafio({ desafio }) {
         )}
       </div>
 
-      {!loading && empresa && (
-        <div
-          onClick={handleClickEmpresa}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            marginBottom: "15px",
-            cursor: "pointer",
-          }}
-        >
-          <div style={{ position: "relative", width: "40px", height: "40px" }}>
-            <img
-              src="http://localhost:3001/FotoPerfil.jpg"
-              alt="Foto padrão"
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "2px solid #e0e0e0",
-                position: "absolute",
-              }}
-            />
-            {empresa.foto_perfil && (
-              <img
-                src={`http://localhost:3001/${empresa.foto_perfil.replace(
-                  "public/",
-                  ""
-                )}`}
-                alt={empresa.nome}
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  border: "2px solid #e0e0e0",
-                  position: "absolute",
-                }}
-              />
-            )}
-          </div>
-          <div>
-            <p
-              style={{
-                margin: 0,
-                fontWeight: "600",
-                fontSize: "14px",
-                color: "#2c3e50",
-              }}
-            >
-              {empresa.nome}
-            </p>
-            <p style={{ margin: 0, fontSize: "12px", color: "#7f8c8d" }}>
-              @{empresa.nome_usuario}
-            </p>
-          </div>
+      <div
+        onClick={handleClickEmpresa}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "15px",
+          cursor: "pointer",
+        }}
+      >
+        {renderFotoPerfil(desafio.usuario_foto, desafio.usuario_nome)}
+        <div>
+          <p
+            style={{
+              margin: 0,
+              fontWeight: "600",
+              fontSize: "14px",
+              color: "#2c3e50",
+            }}
+          >
+            {desafio.usuario_nome}
+          </p>
+          <p style={{ margin: 0, fontSize: "12px", color: "#7f8c8d" }}>
+            @{desafio.nome_usuario}
+          </p>
         </div>
-      )}
+      </div>
 
       <h3
         style={{
@@ -242,7 +215,7 @@ export default function CardDesafio({ desafio }) {
           </span>
         </div>
 
-        {menorProposta && (
+        {desafio.menor_proposta && (
           <div style={{ textAlign: "right" }}>
             <p
               style={{
@@ -261,7 +234,7 @@ export default function CardDesafio({ desafio }) {
               }}
             >
               R${" "}
-              {Number(menorProposta).toLocaleString("pt-BR", {
+              {Number(desafio.menor_proposta).toLocaleString("pt-BR", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}

@@ -104,11 +104,6 @@ export default function CriarDesafio() {
     }
 
     try {
-      const dataExpiracao = new Date();
-      dataExpiracao.setMinutes(
-        dataExpiracao.getMinutes() + Number.parseInt(minutosExpiracao)
-      );
-
       const orcamentoNumero = Number(
         orcamento.replace(/\./g, "").replace(",", ".")
       );
@@ -119,7 +114,6 @@ export default function CriarDesafio() {
         requisitos,
         caracteristicas: JSON.stringify(caracteristicas),
         orcamento: orcamentoNumero,
-        expira_em: dataExpiracao.toISOString(),
         minutos_expiracao: Number.parseInt(minutosExpiracao),
       });
 

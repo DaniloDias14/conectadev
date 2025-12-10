@@ -16,6 +16,12 @@ export default function CountdownTimer({
       const expiracao = new Date(expiraEm).getTime();
       const diferencaSegundos = Math.floor((expiracao - agora) / 1000);
 
+      console.log("[v0] Timer:", {
+        agora: new Date(agora).toISOString(),
+        expiracao: new Date(expiracao).toISOString(),
+        diferencaSegundos,
+      });
+
       if (diferencaSegundos <= 0) {
         if (!expirou) {
           setExpirou(true);

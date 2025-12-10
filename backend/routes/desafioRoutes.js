@@ -98,7 +98,6 @@ router.post("/", async (req, res) => {
       requisitos,
       caracteristicas,
       orcamento,
-      expira_em,
       minutos_expiracao,
     } = req.body;
     const usuarioId = req.usuario.id;
@@ -127,9 +126,12 @@ router.post("/", async (req, res) => {
         .json({ mensagem: "Orçamento deve ser maior que 0" });
     }
 
+    // Calcular data de expiração no servidor usando NOW() do Supabase
     const resultado = await pool.query(
       `INSERT INTO desafios (usuario_id, titulo, descricao, requisitos, caracteristicas, orcamento, expira_em, minutos_expiracao) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '${Number.parseInt(
+         minutos_expiracao
+       )} minutes', $7) 
        RETURNING *`,
       [
         usuarioId,
@@ -138,14 +140,14 @@ router.post("/", async (req, res) => {
         requisitos,
         caracteristicas,
         orcamento,
-        expira_em,
         minutos_expiracao,
       ]
     );
 
+    console.log("[v0] Desafio criado:", resultado.rows[0]);
     res.status(201).json({ desafio: resultado.rows[0] });
   } catch (erro) {
-    console.error(erro);
+    console.error("[v0] Erro ao criar desafio:", erro);
     res.status(500).json({ mensagem: "Erro ao criar desafio" });
   }
 });
