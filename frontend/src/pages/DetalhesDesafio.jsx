@@ -318,7 +318,7 @@ export default function DetalhesDesafio() {
               borderBottom: "2px solid #f0f0f0",
               cursor: "pointer",
             }}
-            onClick={() => navigate(`/perfil/@${desafio.nome_usuario}`)}
+            onClick={() => navigate(`/perfil/${desafio.nome_usuario}`)}
           >
             {renderFotoPerfil(desafio.usuario_foto, desafio.usuario_nome)}
             <div>
@@ -605,7 +605,7 @@ export default function DetalhesDesafio() {
                   cursor: "pointer",
                 }}
                 onClick={() =>
-                  navigate(`/perfil/@${desafio.vencedor_nome_usuario}`)
+                  navigate(`/perfil/${desafio.vencedor_nome_usuario}`)
                 }
               >
                 {renderFotoPerfil(desafio.vencedor_foto, desafio.vencedor_nome)}
@@ -743,89 +743,155 @@ export default function DetalhesDesafio() {
                           padding: "15px",
                           borderRadius: "8px",
                           border: "1px solid #ddd",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
                         }}
                       >
                         <div
                           style={{
-                            flex: 1,
                             display: "flex",
-                            alignItems: "center",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
                             gap: "12px",
-                            cursor: "pointer",
+                            marginBottom: "12px",
                           }}
-                          onClick={() =>
-                            navigate(
-                              `/perfil/@${proposta.usuario_nome_usuario}`
-                            )
-                          }
                         >
-                          {renderFotoPerfil(
-                            proposta.usuario_foto,
-                            proposta.usuario_nome,
-                            "40px"
-                          )}
-                          <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              flex: 1,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                              cursor: "pointer",
+                            }}
+                            onClick={() =>
+                              navigate(
+                                `/perfil/${proposta.usuario_nome_usuario}`
+                              )
+                            }
+                          >
+                            {renderFotoPerfil(
+                              proposta.usuario_foto,
+                              proposta.usuario_nome,
+                              "40px"
+                            )}
+                            <div style={{ minWidth: 0 }}>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontWeight: "600",
+                                  color: "#2c3e50",
+                                  fontSize: "14px",
+                                }}
+                              >
+                                {proposta.usuario_nome}
+                              </p>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: "12px",
+                                  color: "#7f8c8d",
+                                }}
+                              >
+                                @{proposta.usuario_nome_usuario}
+                              </p>
+                              <p
+                                style={{
+                                  margin: "4px 0 0 0",
+                                  fontSize: "13px",
+                                  color: "#2e7d32",
+                                  fontWeight: "600",
+                                }}
+                              >
+                                R${" "}
+                                {Number(proposta.valor).toLocaleString(
+                                  "pt-BR",
+                                  { minimumFractionDigits: 2 }
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleEscolherVencedor(proposta.id)}
+                            style={{
+                              padding: "8px 16px",
+                              backgroundColor: "#27ae60",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                              fontSize: "13px",
+                              transition: "background-color 0.3s",
+                              whiteSpace: "nowrap",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.target.style.backgroundColor = "#229954")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.target.style.backgroundColor = "#27ae60")
+                            }
+                          >
+                            Escolher
+                          </button>
+                        </div>
+
+                        <div
+                          style={{
+                            backgroundColor: "white",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            border: "1px solid #eee",
+                            marginTop: "8px",
+                          }}
+                        >
+                          <div style={{ marginBottom: "10px" }}>
                             <p
                               style={{
-                                margin: 0,
-                                fontWeight: "600",
-                                color: "#2c3e50",
-                                fontSize: "14px",
-                              }}
-                            >
-                              {proposta.usuario_nome}
-                            </p>
-                            <p
-                              style={{
-                                margin: 0,
+                                margin: "0 0 6px 0",
                                 fontSize: "12px",
+                                fontWeight: "600",
                                 color: "#7f8c8d",
+                                textTransform: "uppercase",
                               }}
                             >
-                              @{proposta.usuario_nome_usuario}
+                              Justificativa
                             </p>
                             <p
                               style={{
-                                margin: "4px 0 0 0",
+                                margin: 0,
                                 fontSize: "13px",
-                                color: "#2e7d32",
-                                fontWeight: "600",
+                                color: "#2c3e50",
+                                lineHeight: "1.4",
                               }}
                             >
-                              R${" "}
-                              {Number(proposta.valor).toLocaleString("pt-BR", {
-                                minimumFractionDigits: 2,
-                              })}
+                              {proposta.justificativa ||
+                                "Sem justificativa fornecida"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p
+                              style={{
+                                margin: "0 0 6px 0",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                color: "#7f8c8d",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              Prazo Estimado
+                            </p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "13px",
+                                color: "#2c3e50",
+                              }}
+                            >
+                              {proposta.prazo_estimado}{" "}
+                              {proposta.prazo_estimado === 1 ? "dia" : "dias"}
                             </p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleEscolherVencedor(proposta.id)}
-                          style={{
-                            padding: "8px 16px",
-                            backgroundColor: "#27ae60",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontWeight: "600",
-                            fontSize: "13px",
-                            transition: "background-color 0.3s",
-                            whiteSpace: "nowrap",
-                            marginLeft: "12px",
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.target.style.backgroundColor = "#229954")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.target.style.backgroundColor = "#27ae60")
-                          }
-                        >
-                          Escolher
-                        </button>
                       </div>
                     ))}
                   </div>
@@ -884,41 +950,44 @@ export default function DetalhesDesafio() {
             </div>
           )}
 
-          {usuario?.tipo === "proponente" && estaAtivo && (
-            <div style={{ marginBottom: "20px" }}>
-              <textarea
-                value={novoComentario}
-                onChange={(e) => setNovoComentario(e.target.value)}
-                placeholder="Deixe um comentário..."
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  border: "1px solid #ddd",
-                  fontSize: "14px",
-                  fontFamily: "inherit",
-                  resize: "vertical",
-                  minHeight: "80px",
-                }}
-              />
-              <button
-                onClick={handleEnviarComentario}
-                disabled={!novoComentario.trim()}
-                style={{
-                  marginTop: "10px",
-                  padding: "10px 20px",
-                  backgroundColor: "#3498db",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                }}
-              >
-                Enviar
-              </button>
-            </div>
-          )}
+          {estaAtivo &&
+            (usuario?.tipo === "proponente" ||
+              (usuario?.tipo === "contratante" &&
+                desafio.usuario_id === usuario.id)) && (
+              <div style={{ marginBottom: "20px" }}>
+                <textarea
+                  value={novoComentario}
+                  onChange={(e) => setNovoComentario(e.target.value)}
+                  placeholder="Deixe um comentário..."
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid #ddd",
+                    fontSize: "14px",
+                    fontFamily: "inherit",
+                    resize: "vertical",
+                    minHeight: "80px",
+                  }}
+                />
+                <button
+                  onClick={handleEnviarComentario}
+                  disabled={!novoComentario.trim()}
+                  style={{
+                    marginTop: "10px",
+                    padding: "10px 20px",
+                    backgroundColor: "#3498db",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                  }}
+                >
+                  Enviar
+                </button>
+              </div>
+            )}
 
           {comentarios.map((comentario) => (
             <div
@@ -927,7 +996,7 @@ export default function DetalhesDesafio() {
                 backgroundColor: "#f9f9f9",
                 padding: "15px",
                 borderRadius: "8px",
-                marginBottom: "15px",
+                marginBottom: "12px",
                 border: "1px solid #eee",
               }}
             >
@@ -963,22 +1032,27 @@ export default function DetalhesDesafio() {
                 {comentario.mensagem}
               </p>
 
-              {estaAtivo && usuario?.tipo === "proponente" && (
-                <button
-                  onClick={() => setComentarioRespondendo(comentario.id)}
-                  style={{
-                    padding: "6px 12px",
-                    backgroundColor: "#e8e8e8",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    fontWeight: "500",
-                  }}
-                >
-                  Responder
-                </button>
-              )}
+              {estaAtivo &&
+                (usuario?.tipo === "proponente" ||
+                  (usuario?.tipo === "contratante" &&
+                    desafio.usuario_id === usuario.id)) && (
+                  <button
+                    onClick={() => setComentarioRespondendo(comentario.id)}
+                    style={{
+                      marginTop: "8px",
+                      padding: "6px 12px",
+                      backgroundColor: "#ecf0f1",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#7f8c8d",
+                    }}
+                  >
+                    Responder
+                  </button>
+                )}
 
               {comentarioRespondendo === comentario.id && (
                 <div style={{ marginTop: "10px" }}>

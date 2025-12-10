@@ -100,7 +100,7 @@ export default function AutenticacaoModal() {
 
     try {
       await cadastro(nome, email, senhaRegistro, tipo, nomeUsuario);
-      setSucesso("Cadastro realizado! Verifique seu email para confirmar.");
+      setSucesso("Confirme seu e-mail para ativar sua conta!");
       // Limpa o formulário
       setNome("");
       setNomeUsuario("");
@@ -108,6 +108,7 @@ export default function AutenticacaoModal() {
       setSenhaRegistro("");
       setConfirmarSenha("");
       setTipo("proponente");
+      setCarregando(false);
       // Volta para login após 3 segundos
       setTimeout(() => setModoLogin(true), 3000);
     } catch (err) {

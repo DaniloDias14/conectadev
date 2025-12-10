@@ -123,20 +123,39 @@ export default function Perfil() {
     }
   };
 
-  const renderFotoPerfil = (foto, nome, tamanho) => (
-    <img
-      src={`http://localhost:3001/${foto.replace("public/", "")}`}
-      alt={nome}
-      style={{
-        width: tamanho,
-        height: tamanho,
-        borderRadius: "50%",
-        objectFit: "cover",
-        backgroundColor: "#f0f0f0",
-        border: "2px solid #e8e8e8",
-      }}
-    />
-  );
+  const renderFotoPerfil = (foto, nome, tamanho) => {
+    if (!foto) {
+      return (
+        <img
+          src="http://localhost:3001/FotoPerfil.jpg"
+          alt={nome}
+          style={{
+            width: tamanho,
+            height: tamanho,
+            borderRadius: "50%",
+            objectFit: "cover",
+            backgroundColor: "#f0f0f0",
+            border: "2px solid #e8e8e8",
+          }}
+        />
+      );
+    }
+
+    return (
+      <img
+        src={`http://localhost:3001/${foto.replace("public/", "")}`}
+        alt={nome}
+        style={{
+          width: tamanho,
+          height: tamanho,
+          borderRadius: "50%",
+          objectFit: "cover",
+          backgroundColor: "#f0f0f0",
+          border: "2px solid #e8e8e8",
+        }}
+      />
+    );
+  };
 
   if (carregando) {
     return (
@@ -217,38 +236,9 @@ export default function Perfil() {
             }}
           >
             <div style={{ flexShrink: 0, position: "relative" }}>
-              {usuario.foto_perfil ? (
-                <img
-                  src={`http://localhost:3001/${usuario.foto_perfil.replace(
-                    "public/",
-                    ""
-                  )}`}
-                  alt={usuario.nome}
-                  style={{
-                    width: "160px",
-                    height: "160px",
-                    borderRadius: "12px",
-                    objectFit: "cover",
-                    backgroundColor: "#f0f0f0",
-                    border: "3px solid #e8e8e8",
-                    position: "absolute",
-                  }}
-                />
-              ) : (
-                <img
-                  src="http://localhost:3001/FotoPerfil.jpg"
-                  alt="Foto padrão"
-                  style={{
-                    width: "160px",
-                    height: "160px",
-                    borderRadius: "12px",
-                    objectFit: "cover",
-                    backgroundColor: "#f0f0f0",
-                    border: "3px solid #e8e8e8",
-                    position: "absolute",
-                  }}
-                />
-              )}
+              {usuario.foto_perfil
+                ? renderFotoPerfil(usuario.foto_perfil, usuario.nome, "160px")
+                : renderFotoPerfil(null, "Foto padrão", "160px")}
               {isOwnProfile && usuario.foto_perfil && (
                 <button
                   onClick={removerFoto}

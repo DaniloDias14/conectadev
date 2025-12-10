@@ -51,7 +51,7 @@ export default function CardDesafio({ desafio }) {
 
   const handleClickEmpresa = (e) => {
     e.stopPropagation();
-    navigate(`/perfil/@${desafio.nome_usuario}`);
+    navigate(`/perfil/${desafio.nome_usuario}`);
   };
 
   return (
@@ -128,7 +128,7 @@ export default function CardDesafio({ desafio }) {
             {desafio.usuario_nome}
           </p>
           <p style={{ margin: 0, fontSize: "12px", color: "#7f8c8d" }}>
-            @{desafio.nome_usuario}
+            {desafio.nome_usuario}
           </p>
         </div>
       </div>

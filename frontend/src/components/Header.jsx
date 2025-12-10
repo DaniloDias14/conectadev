@@ -62,7 +62,7 @@ export default function Header() {
   };
 
   const handleSugestaoClick = (nomeUsuario) => {
-    navigate(`/perfil/${nomeUsuario}`);
+    navigate(`/perfil/${nomeUsuario.replace("@", "")}`);
     setBusca("");
     setSugestoes([]);
     setMostraSugestoes(false);
@@ -248,7 +248,9 @@ export default function Header() {
                 Feed
               </button>
               <button
-                onClick={() => navigate(`/perfil/${usuario.nome_usuario}`)}
+                onClick={() =>
+                  navigate(`/perfil/${usuario.nome_usuario.replace("@", "")}`)
+                }
                 style={{
                   padding: "6px 12px",
                   backgroundColor: "transparent",
