@@ -799,240 +799,213 @@ export default function DetalhesDesafio() {
                 Nenhum comentário ainda. Seja o primeiro a comentar!
               </p>
             ) : (
-              comentarios.map((com) => (
+              comentarios.map((comentario) => (
                 <div
-                  key={com.id}
+                  key={comentario.id}
                   style={{
-                    padding: "18px",
                     backgroundColor: "#f9f9f9",
+                    padding: "18px",
                     borderRadius: "8px",
                     marginBottom: "15px",
+                    border: "1px solid #e8e8e8",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
-                      alignItems: "flex-start",
+                      alignItems: "center",
                       gap: "12px",
+                      marginBottom: "12px",
+                      cursor: "pointer",
                     }}
+                    onClick={() => navigate(`/perfil/${comentario.usuario_id}`)}
                   >
                     {renderFotoPerfil(
-                      com.usuario_foto,
-                      com.usuario_nome,
-                      "36px"
+                      comentario.usuario_foto,
+                      comentario.usuario_nome,
+                      "40px"
                     )}
-                    <div style={{ flex: 1 }}>
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontWeight: "600",
+                          fontSize: "15px",
+                        }}
+                      >
+                        {comentario.usuario_nome}
+                      </p>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#888" }}>
+                        {new Date(comentario.criado_em).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p
+                    style={{
+                      margin: "0 0 12px 0",
+                      color: "#444",
+                      lineHeight: "1.6",
+                    }}
+                  >
+                    {comentario.mensagem}
+                  </p>
+
+                  {estaAtivo && (
+                    <button
+                      onClick={() =>
+                        setComentarioRespondendo(
+                          comentarioRespondendo === comentario.id
+                            ? null
+                            : comentario.id
+                        )
+                      }
+                      style={{
+                        backgroundColor: "transparent",
+                        border: "none",
+                        color: "#3498db",
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        padding: "4px 0",
+                      }}
+                      disabled={enviandoComentario}
+                    >
+                      {comentarioRespondendo === comentario.id
+                        ? "Cancelar"
+                        : "Responder Comentário"}
+                    </button>
+                  )}
+
+                  {comentarioRespondendo === comentario.id && (
+                    <div style={{ marginTop: "12px", paddingLeft: "20px" }}>
+                      <textarea
+                        value={textoResposta}
+                        onChange={(e) => {
+                          if (e.target.value.length <= 250) {
+                            setTextoResposta(e.target.value);
+                          }
+                        }}
+                        maxLength="250"
+                        placeholder="Escreva sua resposta..."
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          border: "2px solid #e0e0e0",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          minHeight: "70px",
+                          boxSizing: "border-box",
+                          resize: "vertical",
+                          fontFamily: "inherit",
+                        }}
+                        disabled={enviandoComentario}
+                      />
                       <div
                         style={{
                           display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          marginBottom: "8px",
+                          justifyContent: "space-between",
+                          marginTop: "6px",
                         }}
                       >
-                        <p
+                        <small
                           style={{
-                            margin: 0,
-                            fontWeight: "600",
-                            color: "#2c3e50",
-                            fontSize: "14px",
+                            color:
+                              textoResposta.length === 250
+                                ? "#e74c3c"
+                                : "#7f8c8d",
                           }}
                         >
-                          {com.usuario_nome}
-                        </p>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "12px",
-                            color: "#7f8c8d",
-                          }}
-                        >
-                          {new Date(com.criado_em).toLocaleString("pt-BR")}
-                        </p>
-                      </div>
-                      <p
-                        style={{
-                          margin: "0 0 10px 0",
-                          color: "#555",
-                          lineHeight: "1.5",
-                          whiteSpace: "pre-wrap",
-                          wordWrap: "break-word",
-                        }}
-                      >
-                        {com.mensagem}
-                      </p>
-
-                      {estaAtivo && (
+                          {textoResposta.length}/250
+                        </small>
                         <button
-                          onClick={() =>
-                            setComentarioRespondendo(
-                              comentarioRespondendo === com.id ? null : com.id
-                            )
-                          }
+                          onClick={() => handleEnviarResposta(comentario.id)}
+                          disabled={enviandoComentario || !textoResposta.trim()}
                           style={{
-                            backgroundColor: "transparent",
+                            padding: "8px 16px",
+                            backgroundColor: enviandoComentario
+                              ? "#95a5a6"
+                              : "#3498db",
+                            color: "white",
                             border: "none",
-                            color: "#3498db",
-                            cursor: "pointer",
+                            borderRadius: "5px",
+                            cursor:
+                              enviandoComentario || !textoResposta.trim()
+                                ? "not-allowed"
+                                : "pointer",
                             fontSize: "13px",
                             fontWeight: "600",
-                            padding: "4px 0",
+                            opacity: !textoResposta.trim() ? 0.5 : 1,
                           }}
-                          disabled={enviandoComentario}
                         >
-                          {comentarioRespondendo === com.id
-                            ? "Cancelar"
-                            : "Responder Comentário"}
+                          {enviandoComentario
+                            ? "Enviando..."
+                            : "Enviar Resposta"}
                         </button>
-                      )}
+                      </div>
+                    </div>
+                  )}
 
-                      {comentarioRespondendo === com.id && (
-                        <div style={{ marginTop: "12px", paddingLeft: "20px" }}>
-                          <textarea
-                            value={textoResposta}
-                            onChange={(e) => {
-                              if (e.target.value.length <= 250) {
-                                setTextoResposta(e.target.value);
-                              }
-                            }}
-                            maxLength="250"
-                            placeholder="Escreva sua resposta..."
-                            style={{
-                              width: "100%",
-                              padding: "10px",
-                              border: "2px solid #e0e0e0",
-                              borderRadius: "6px",
-                              fontSize: "13px",
-                              minHeight: "70px",
-                              boxSizing: "border-box",
-                              resize: "vertical",
-                              fontFamily: "inherit",
-                            }}
-                            disabled={enviandoComentario}
-                          />
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              marginTop: "6px",
-                            }}
-                          >
-                            <small
+                  {comentario.respostas &&
+                    comentario.respostas.map((resposta) => (
+                      <div
+                        key={resposta.id}
+                        style={{
+                          backgroundColor: "white",
+                          padding: "15px",
+                          borderRadius: "6px",
+                          marginTop: "12px",
+                          marginLeft: "25px",
+                          border: "1px solid #e0e0e0",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            marginBottom: "10px",
+                            cursor: "pointer",
+                          }}
+                          onClick={() =>
+                            navigate(`/perfil/${resposta.usuario_id}`)
+                          }
+                        >
+                          {renderFotoPerfil(
+                            resposta.usuario_foto,
+                            resposta.usuario_nome,
+                            "35px"
+                          )}
+                          <div>
+                            <p
                               style={{
-                                color:
-                                  textoResposta.length === 250
-                                    ? "#e74c3c"
-                                    : "#7f8c8d",
-                              }}
-                            >
-                              {textoResposta.length}/250
-                            </small>
-                            <button
-                              onClick={() => handleEnviarResposta(com.id)}
-                              disabled={
-                                enviandoComentario || !textoResposta.trim()
-                              }
-                              style={{
-                                padding: "8px 16px",
-                                backgroundColor: enviandoComentario
-                                  ? "#95a5a6"
-                                  : "#3498db",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "5px",
-                                cursor:
-                                  enviandoComentario || !textoResposta.trim()
-                                    ? "not-allowed"
-                                    : "pointer",
-                                fontSize: "13px",
+                                margin: 0,
                                 fontWeight: "600",
-                                opacity: !textoResposta.trim() ? 0.5 : 1,
+                                fontSize: "14px",
                               }}
                             >
-                              {enviandoComentario
-                                ? "Enviando..."
-                                : "Enviar Resposta"}
-                            </button>
+                              {resposta.usuario_nome}
+                            </p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "11px",
+                                color: "#888",
+                              }}
+                            >
+                              {new Date(resposta.criado_em).toLocaleString(
+                                "pt-BR"
+                              )}
+                            </p>
                           </div>
                         </div>
-                      )}
-
-                      {com.respostas && com.respostas.length > 0 && (
-                        <div style={{ marginTop: "12px", marginLeft: "20px" }}>
-                          {com.respostas.map((resposta) => (
-                            <div
-                              key={resposta.id}
-                              style={{
-                                padding: "12px",
-                                backgroundColor: "white",
-                                borderRadius: "6px",
-                                marginBottom: "8px",
-                                border: "1px solid #e8e8e8",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: "10px",
-                                }}
-                              >
-                                {renderFotoPerfil(
-                                  resposta.usuario_foto,
-                                  resposta.usuario_nome,
-                                  "30px"
-                                )}
-                                <div style={{ flex: 1 }}>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "8px",
-                                      marginBottom: "6px",
-                                    }}
-                                  >
-                                    <p
-                                      style={{
-                                        margin: 0,
-                                        fontWeight: "600",
-                                        color: "#2c3e50",
-                                        fontSize: "13px",
-                                      }}
-                                    >
-                                      {resposta.usuario_nome}
-                                    </p>
-                                    <p
-                                      style={{
-                                        margin: 0,
-                                        fontSize: "11px",
-                                        color: "#7f8c8d",
-                                      }}
-                                    >
-                                      {new Date(
-                                        resposta.criado_em
-                                      ).toLocaleString("pt-BR")}
-                                    </p>
-                                  </div>
-                                  <p
-                                    style={{
-                                      margin: 0,
-                                      color: "#555",
-                                      fontSize: "13px",
-                                      lineHeight: "1.5",
-                                      whiteSpace: "pre-wrap",
-                                      wordWrap: "break-word",
-                                    }}
-                                  >
-                                    {resposta.mensagem}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                        <p
+                          style={{ margin: 0, color: "#555", fontSize: "14px" }}
+                        >
+                          {resposta.mensagem}
+                        </p>
+                      </div>
+                    ))}
                 </div>
               ))
             )}

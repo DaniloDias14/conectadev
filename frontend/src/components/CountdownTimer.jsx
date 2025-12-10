@@ -14,9 +14,9 @@ export default function CountdownTimer({
     const calcularTempoRestante = () => {
       const agora = new Date().getTime();
       const expiracao = new Date(expiraEm).getTime();
-      const diferenca = expiracao - agora;
+      const diferencaSegundos = Math.floor((expiracao - agora) / 1000);
 
-      if (diferenca <= 0) {
+      if (diferencaSegundos <= 0) {
         if (!expirou) {
           setExpirou(true);
           setTempoRestante(null);
@@ -25,9 +25,9 @@ export default function CountdownTimer({
         return;
       }
 
-      const horas = Math.floor(diferenca / (1000 * 60 * 60));
-      const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
-      const segundos = Math.floor((diferenca % (1000 * 60)) / 1000);
+      const horas = Math.floor(diferencaSegundos / 3600);
+      const minutos = Math.floor((diferencaSegundos % 3600) / 60);
+      const segundos = diferencaSegundos % 60;
 
       setTempoRestante({ horas, minutos, segundos });
     };

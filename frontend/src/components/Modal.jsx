@@ -10,21 +10,45 @@ export default function Modal({ desafioId, onClose }) {
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
+  const formatarValorReais = (valor) => {
+    const numeros = valor.replace(/\D/g, "");
+    if (!numeros) return "";
+
+    const numero = Number(numeros) / 100;
+    return numero.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const handleValorChange = (e) => {
+    const valorFormatado = formatarValorReais(e.target.value);
+    setValor(valorFormatado);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
     setCarregando(true);
 
-    if (justificativa.length < 30) {
-      setErro("Justificativa deve ter no mínimo 30 caracteres");
+    if (!justificativa.trim()) {
+      setErro("Justificativa é obrigatória");
+      setCarregando(false);
+      return;
+    }
+
+    if (justificativa.length > 500) {
+      setErro("Justificativa deve ter no máximo 500 caracteres");
       setCarregando(false);
       return;
     }
 
     try {
+      const valorNumerico = Number(valor.replace(/\./g, "").replace(",", "."));
+
       await api.post("/propostas", {
         desafio_id: desafioId,
-        valor: Number.parseFloat(valor),
+        valor: valorNumerico,
         justificativa,
         prazo_estimado: Number.parseInt(prazo),
       });
@@ -114,12 +138,10 @@ export default function Modal({ desafioId, onClose }) {
               Valor (R$) *
             </label>
             <input
-              type="number"
+              type="text"
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={handleValorChange}
               required
-              step="0.01"
-              min="0"
               style={{
                 width: "100%",
                 padding: "10px",
@@ -128,8 +150,13 @@ export default function Modal({ desafioId, onClose }) {
                 fontSize: "14px",
                 boxSizing: "border-box",
               }}
-              placeholder="0.00"
+              placeholder="0,00"
             />
+            <small
+              style={{ color: "#666", display: "block", marginTop: "4px" }}
+            >
+              Digite apenas números, a formatação é automática
+            </small>
           </div>
 
           <div style={{ marginBottom: "20px" }}>
@@ -144,10 +171,13 @@ export default function Modal({ desafioId, onClose }) {
             </label>
             <textarea
               value={justificativa}
-              onChange={(e) => setJustificativa(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 500) {
+                  setJustificativa(e.target.value);
+                }
+              }}
               required
-              minLength="30"
-              maxLength="2000"
+              maxLength="500"
               style={{
                 width: "100%",
                 padding: "10px",
@@ -156,10 +186,20 @@ export default function Modal({ desafioId, onClose }) {
                 fontSize: "14px",
                 minHeight: "100px",
                 boxSizing: "border-box",
+                resize: "vertical",
               }}
               placeholder="Por que você é o melhor para este desafio?"
             />
-            <small style={{ color: "#666" }}>Mínimo 30 caracteres</small>
+            <small
+              style={{
+                color: justificativa.length === 500 ? "#e74c3c" : "#666",
+                display: "block",
+                marginTop: "4px",
+              }}
+            >
+              {justificativa.length}/500 caracteres{" "}
+              {justificativa.length === 500 && "- Limite atingido"}
+            </small>
           </div>
 
           <div style={{ marginBottom: "20px" }}>
