@@ -23,6 +23,7 @@ export default function DetalhesDesafio() {
   const [propostas, setPropostas] = useState([]);
   const [mostrarPropostas, setMostrarPropostas] = useState(false);
   const [desafioExpirado, setDesafioExpirado] = useState(false);
+  const [carregandoPropostas, setCarregandoPropostas] = useState(false);
   const { usuario, token } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -34,24 +35,25 @@ export default function DetalhesDesafio() {
 
     const carregarDesafio = async () => {
       try {
+        console.log("[v0] Carregando desafio ID:", id);
         const response = await api.get(`/desafios/${id}`);
-        setDesafio(response.data.desafio);
+        const desafioData = response.data.desafio;
+        setDesafio(desafioData);
         setComentarios(response.data.comentarios || []);
 
-        const estaExpirado =
-          new Date(response.data.desafio.expira_em) < new Date();
+        console.log("[v0] Desafio carregado. Status:", desafioData.status);
+        console.log("[v0] Desafio expira em:", desafioData.expira_em);
+        console.log("[v0] Agora é:", new Date().toISOString());
+
+        const estaExpirado = new Date(desafioData.expira_em) < new Date();
+        console.log("[v0] Está expirado?", estaExpirado);
+
         if (estaExpirado) {
           setDesafioExpirado(true);
-        }
-
-        if (
-          usuario?.tipo === "contratante" &&
-          response.data.desafio.usuario_id === usuario.id
-        ) {
-          const propostasRes = await api.get(`/desafios/${id}/propostas`);
-          setPropostas(propostasRes.data.propostas || []);
+          console.log("[v0] Desafio está expirado");
         }
       } catch (err) {
+        console.error("[v0] Erro ao carregar desafio:", err);
         setErro("Desafio não encontrado");
       } finally {
         setCarregando(false);
@@ -59,7 +61,55 @@ export default function DetalhesDesafio() {
     };
 
     carregarDesafio();
-  }, [id, token, navigate, usuario]);
+  }, [id, token, navigate]);
+
+  useEffect(() => {
+    const carregarPropostasSeNecessario = async () => {
+      if (!desafio || !usuario) return;
+
+      const estaExpirado = new Date(desafio.expira_em) < new Date();
+      const ehDono = desafio.usuario_id === usuario.id;
+      const ehContratante = usuario.tipo === "contratante";
+
+      console.log("[v0] Verificando se deve carregar propostas...");
+      console.log("[v0] Expirado?", estaExpirado);
+      console.log("[v0] É dono?", ehDono);
+      console.log("[v0] É contratante?", ehContratante);
+      console.log("[v0] Propostas já carregadas?", propostas.length > 0);
+
+      if (estaExpirado && ehDono && ehContratante && propostas.length === 0) {
+        console.log("[v0] Carregando propostas...");
+        await carregarPropostas();
+      }
+    };
+
+    carregarPropostasSeNecessario();
+  }, [desafio, usuario, propostas.length]);
+
+  const carregarPropostas = async () => {
+    if (carregandoPropostas) return;
+
+    setCarregandoPropostas(true);
+    try {
+      console.log("[v0] Requisição GET /desafios/" + id + "/propostas");
+      const response = await api.get(`/desafios/${id}/propostas`);
+      const propostasData = response.data.propostas || [];
+      console.log(
+        "[v0] Propostas carregadas com sucesso:",
+        propostasData.length
+      );
+      setPropostas(propostasData);
+    } catch (err) {
+      console.error(
+        "[v0] Erro ao carregar propostas:",
+        err.response?.data || err.message
+      );
+      setErro(err.response?.data?.mensagem || "Erro ao carregar propostas");
+      setPropostas([]);
+    } finally {
+      setCarregandoPropostas(false);
+    }
+  };
 
   const handleEnviarComentario = async () => {
     if (!novoComentario.trim()) return;
@@ -115,37 +165,33 @@ export default function DetalhesDesafio() {
     }
 
     try {
+      console.log("[v0] Escolhendo vencedor. Proposta ID:", propostaId);
       await api.post(`/desafios/${id}/escolher-vencedor`, { propostaId });
       alert("Vencedor escolhido com sucesso!");
 
+      // Recarregar desafio para ver o novo status
       const response = await api.get(`/desafios/${id}`);
       setDesafio(response.data.desafio);
       setMostrarPropostas(false);
+      setPropostas([]);
     } catch (err) {
+      console.error("[v0] Erro ao escolher vencedor:", err);
       alert(err.response?.data?.mensagem || "Erro ao escolher vencedor");
     }
   };
 
   const handleExpiracao = async () => {
-    console.log("[v0] handleExpiracao chamado");
+    console.log("[v0] Desafio expirou! (countdown terminou)");
     setDesafioExpirado(true);
+
+    // Recarregar o desafio para atualizar status
     try {
       const response = await api.get(`/desafios/${id}`);
-      setDesafio(response.data.desafio);
-
-      if (
-        response.data.desafio.usuario_id === usuario?.id &&
-        usuario?.tipo === "contratante"
-      ) {
-        const propostasRes = await api.get(`/desafios/${id}/propostas`);
-        setPropostas(propostasRes.data.propostas || []);
-        console.log(
-          "[v0] Propostas carregadas:",
-          propostasRes.data.propostas.length
-        );
-      }
+      const desafioAtualizado = response.data.desafio;
+      setDesafio(desafioAtualizado);
+      console.log("[v0] Desafio atualizado após expiração");
     } catch (err) {
-      console.error("[v0] Erro ao atualizar desafio expirado:", err);
+      console.error("[v0] Erro ao recarregar desafio:", err);
     }
   };
 
@@ -159,8 +205,8 @@ export default function DetalhesDesafio() {
     return <div style={{ padding: "20px" }}>Desafio não encontrado</div>;
 
   const estaExpirado =
-    new Date(desafio.expira_em) < new Date() || desafioExpirado;
-  const estaAtivo = desafio.status === "ativo" && !estaExpirado;
+    desafio.status === "expirado" || desafio.status === "concluido";
+  const estaAtivo = desafio.status === "ativo";
   const estaConcluido = desafio.status === "concluido";
   const ehContratante =
     usuario?.tipo === "contratante" && desafio.usuario_id === usuario.id;
@@ -197,6 +243,9 @@ export default function DetalhesDesafio() {
             objectFit: "cover",
             border: "2px solid #e0e0e0",
             position: "absolute",
+          }}
+          onError={(e) => {
+            e.target.style.display = "none";
           }}
         />
       )}
@@ -535,7 +584,7 @@ export default function DetalhesDesafio() {
             </div>
           )}
 
-          {estaConcluido && desafio.vencedor_id && (
+          {estaConcluido && desafio.vencedor_proposta_id && (
             <div
               style={{
                 backgroundColor: "#d4edda",
@@ -560,16 +609,27 @@ export default function DetalhesDesafio() {
                 }
               >
                 {renderFotoPerfil(desafio.vencedor_foto, desafio.vencedor_nome)}
-                <p
-                  style={{
-                    margin: 0,
-                    fontWeight: "600",
-                    fontSize: "16px",
-                    color: "#155724",
-                  }}
-                >
-                  {desafio.vencedor_nome}
-                </p>
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontWeight: "600",
+                      fontSize: "16px",
+                      color: "#155724",
+                    }}
+                  >
+                    {desafio.vencedor_nome}
+                  </p>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "13px",
+                      color: "#2d5016",
+                    }}
+                  >
+                    @{desafio.vencedor_nome_usuario}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -596,44 +656,83 @@ export default function DetalhesDesafio() {
             </button>
           )}
 
-          {ehContratante &&
-            estaExpirado &&
-            !estaConcluido &&
-            propostas.length > 0 && (
-              <div style={{ marginBottom: "30px" }}>
-                <button
-                  onClick={() => setMostrarPropostas(!mostrarPropostas)}
+          {ehContratante && estaExpirado && !estaConcluido && (
+            <div style={{ marginBottom: "30px" }}>
+              <div
+                style={{
+                  backgroundColor: "#fff3cd",
+                  padding: "15px",
+                  borderRadius: "8px",
+                  marginBottom: "15px",
+                  border: "2px solid #ffc107",
+                }}
+              >
+                <p
                   style={{
-                    padding: "14px 28px",
-                    backgroundColor: "#9c27b0",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
+                    margin: 0,
+                    color: "#856404",
                     fontWeight: "600",
-                    fontSize: "16px",
-                    marginBottom: "15px",
-                    transition: "background-color 0.3s",
                   }}
-                  onMouseEnter={(e) =>
-                    (e.target.style.backgroundColor = "#7b1fa2")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.target.style.backgroundColor = "#9c27b0")
-                  }
                 >
-                  {mostrarPropostas
-                    ? "Ocultar Propostas"
-                    : "Selecionar Vencedor"}{" "}
-                  ({propostas.length} propostas)
-                </button>
+                  ⏱ O desafio expirou! Escolha um vencedor entre as propostas
+                  recebidas.
+                </p>
+              </div>
 
-                {mostrarPropostas && (
+              <button
+                onClick={() => {
+                  if (propostas.length === 0) {
+                    carregarPropostas();
+                  }
+                  setMostrarPropostas(!mostrarPropostas);
+                }}
+                style={{
+                  padding: "14px 28px",
+                  backgroundColor: "#9c27b0",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  fontSize: "16px",
+                  marginBottom: "15px",
+                  transition: "background-color 0.3s",
+                  width: "100%",
+                }}
+                onMouseEnter={(e) =>
+                  (e.target.style.backgroundColor = "#7b1fa2")
+                }
+                onMouseLeave={(e) =>
+                  (e.target.style.backgroundColor = "#9c27b0")
+                }
+              >
+                {mostrarPropostas
+                  ? "Esconder Propostas"
+                  : "Selecionar Vencedor"}
+              </button>
+
+              {carregandoPropostas && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "20px",
+                    color: "#666",
+                  }}
+                >
+                  Carregando propostas...
+                </div>
+              )}
+
+              {mostrarPropostas && propostas.length > 0 && (
+                <div style={{ marginTop: "15px" }}>
+                  <h3 style={{ color: "#2c3e50", marginBottom: "15px" }}>
+                    Propostas Recebidas ({propostas.length})
+                  </h3>
                   <div
                     style={{
-                      display: "grid",
-                      gap: "15px",
-                      marginTop: "15px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px",
                     }}
                   >
                     {propostas.map((proposta) => (
@@ -641,78 +740,82 @@ export default function DetalhesDesafio() {
                         key={proposta.id}
                         style={{
                           backgroundColor: "#f9f9f9",
-                          padding: "20px",
+                          padding: "15px",
                           borderRadius: "8px",
-                          border: "1px solid #e0e0e0",
+                          border: "1px solid #ddd",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
                         }}
                       >
                         <div
                           style={{
+                            flex: 1,
                             display: "flex",
-                            justifyContent: "space-between",
                             alignItems: "center",
-                            marginBottom: "12px",
+                            gap: "12px",
+                            cursor: "pointer",
                           }}
+                          onClick={() =>
+                            navigate(
+                              `/perfil/@${proposta.usuario_nome_usuario}`
+                            )
+                          }
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                              cursor: "pointer",
-                            }}
-                            onClick={() =>
-                              navigate(
-                                `/perfil/@${proposta.usuario_nome_usuario}`
-                              )
-                            }
-                          >
-                            {renderFotoPerfil(
-                              proposta.usuario_foto,
-                              proposta.usuario_nome,
-                              "40px"
-                            )}
-                            <p style={{ margin: 0, fontWeight: "600" }}>
+                          {renderFotoPerfil(
+                            proposta.usuario_foto,
+                            proposta.usuario_nome,
+                            "40px"
+                          )}
+                          <div style={{ minWidth: 0 }}>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontWeight: "600",
+                                color: "#2c3e50",
+                                fontSize: "14px",
+                              }}
+                            >
                               {proposta.usuario_nome}
                             </p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "12px",
+                                color: "#7f8c8d",
+                              }}
+                            >
+                              @{proposta.usuario_nome_usuario}
+                            </p>
+                            <p
+                              style={{
+                                margin: "4px 0 0 0",
+                                fontSize: "13px",
+                                color: "#2e7d32",
+                                fontWeight: "600",
+                              }}
+                            >
+                              R${" "}
+                              {Number(proposta.valor).toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </p>
                           </div>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: "20px",
-                              fontWeight: "700",
-                              color: "#27ae60",
-                            }}
-                          >
-                            R${" "}
-                            {Number(proposta.valor).toLocaleString("pt-BR", {
-                              minimumFractionDigits: 2,
-                            })}
-                          </p>
                         </div>
-                        <p style={{ margin: "0 0 10px 0", color: "#555" }}>
-                          {proposta.justificativa}
-                        </p>
-                        <p
-                          style={{
-                            margin: "0 0 15px 0",
-                            fontSize: "13px",
-                            color: "#888",
-                          }}
-                        >
-                          Prazo: {proposta.prazo_estimado} dias
-                        </p>
                         <button
                           onClick={() => handleEscolherVencedor(proposta.id)}
                           style={{
-                            padding: "10px 20px",
+                            padding: "8px 16px",
                             backgroundColor: "#27ae60",
                             color: "white",
                             border: "none",
                             borderRadius: "6px",
                             cursor: "pointer",
                             fontWeight: "600",
+                            fontSize: "13px",
                             transition: "background-color 0.3s",
+                            whiteSpace: "nowrap",
+                            marginLeft: "12px",
                           }}
                           onMouseEnter={(e) =>
                             (e.target.style.backgroundColor = "#229954")
@@ -721,340 +824,293 @@ export default function DetalhesDesafio() {
                             (e.target.style.backgroundColor = "#27ae60")
                           }
                         >
-                          Escolher como Vencedor
+                          Escolher
                         </button>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
-
-          <div
-            style={{
-              marginTop: "35px",
-              paddingTop: "35px",
-              borderTop: "2px solid #f0f0f0",
-            }}
-          >
-            <h3
-              style={{
-                fontSize: "20px",
-                marginBottom: "20px",
-                color: "#2c3e50",
-              }}
-            >
-              Comentários ({comentarios.length})
-            </h3>
-
-            {estaAtivo ? (
-              <div style={{ marginBottom: "25px" }}>
-                <textarea
-                  value={novoComentario}
-                  onChange={(e) => {
-                    if (e.target.value.length <= 250) {
-                      setNovoComentario(e.target.value);
-                    }
-                  }}
-                  maxLength="250"
-                  placeholder="Deixe um comentário..."
-                  style={{
-                    width: "100%",
-                    padding: "12px 15px",
-                    border: "2px solid #e0e0e0",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    minHeight: "90px",
-                    boxSizing: "border-box",
-                    resize: "vertical",
-                    fontFamily: "inherit",
-                  }}
-                  disabled={enviandoComentario}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: "8px",
-                  }}
-                >
-                  <small
-                    style={{
-                      color:
-                        novoComentario.length === 250 ? "#e74c3c" : "#7f8c8d",
-                    }}
-                  >
-                    {novoComentario.length}/250{" "}
-                    {novoComentario.length === 250 && "- Limite atingido"}
-                  </small>
-                  <button
-                    onClick={handleEnviarComentario}
-                    disabled={enviandoComentario || !novoComentario.trim()}
-                    style={{
-                      padding: "10px 20px",
-                      backgroundColor: enviandoComentario
-                        ? "#95a5a6"
-                        : "#27ae60",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor:
-                        enviandoComentario || !novoComentario.trim()
-                          ? "not-allowed"
-                          : "pointer",
-                      fontWeight: "600",
-                      opacity: !novoComentario.trim() ? 0.5 : 1,
-                    }}
-                  >
-                    {enviandoComentario ? "Enviando..." : "Comentar"}
-                  </button>
                 </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  backgroundColor: "#f8d7da",
-                  color: "#721c24",
-                  padding: "12px",
-                  borderRadius: "6px",
-                  marginBottom: "20px",
-                  fontSize: "14px",
-                }}
-              >
-                Comentários estão bloqueados neste desafio
-              </div>
-            )}
+              )}
 
-            {comentarios.length === 0 ? (
-              <p
-                style={{ color: "#999", textAlign: "center", padding: "20px" }}
-              >
-                Nenhum comentário ainda. Seja o primeiro a comentar!
-              </p>
-            ) : (
-              comentarios.map((comentario) => (
-                <div
-                  key={comentario.id}
-                  style={{
-                    marginBottom: "25px",
-                    paddingBottom: "20px",
-                    borderBottom: "1px solid #eeeeee",
-                  }}
-                >
+              {mostrarPropostas &&
+                propostas.length === 0 &&
+                !carregandoPropostas && (
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "12px",
+                      backgroundColor: "#f0f0f0",
+                      padding: "20px",
+                      borderRadius: "8px",
+                      textAlign: "center",
+                      color: "#666",
                     }}
                   >
-                    <div
-                      style={{ cursor: "pointer" }}
-                      onClick={() =>
-                        navigate(`/perfil/@${comentario.usuario_nome_usuario}`)
-                      }
-                    >
-                      {renderFotoPerfil(
-                        comentario.usuario_foto,
-                        comentario.usuario_nome,
-                        "45px"
-                      )}
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontWeight: "600",
-                          fontSize: "15px",
-                        }}
-                      >
-                        {comentario.usuario_nome}
-                      </p>
-                      <p style={{ margin: 0, fontSize: "12px", color: "#888" }}>
-                        {new Date(comentario.criado_em).toLocaleString("pt-BR")}
-                      </p>
-                      <p
-                        style={{
-                          margin: "0 0 12px 0",
-                          color: "#444",
-                          lineHeight: "1.6",
-                        }}
-                      >
-                        {comentario.mensagem}
-                      </p>
-                    </div>
+                    Nenhuma proposta recebida para este desafio.
                   </div>
+                )}
+            </div>
+          )}
 
-                  {estaAtivo && (
+          {usuario?.tipo === "proponente" && !estaAtivo && (
+            <div
+              style={{
+                backgroundColor: "#f0f0f0",
+                padding: "15px",
+                borderRadius: "8px",
+                textAlign: "center",
+                color: "#666",
+              }}
+            >
+              Este desafio não está mais ativo.
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: "40px" }}>
+          <h2 style={{ marginBottom: "20px", color: "#2c3e50" }}>
+            Comentários
+          </h2>
+
+          {usuario?.tipo === "contratante" && !estaAtivo && (
+            <div
+              style={{
+                backgroundColor: "#f0f0f0",
+                padding: "15px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                color: "#666",
+              }}
+            >
+              Comentários desativados para desafios não ativos.
+            </div>
+          )}
+
+          {usuario?.tipo === "proponente" && estaAtivo && (
+            <div style={{ marginBottom: "20px" }}>
+              <textarea
+                value={novoComentario}
+                onChange={(e) => setNovoComentario(e.target.value)}
+                placeholder="Deixe um comentário..."
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "1px solid #ddd",
+                  fontSize: "14px",
+                  fontFamily: "inherit",
+                  resize: "vertical",
+                  minHeight: "80px",
+                }}
+              />
+              <button
+                onClick={handleEnviarComentario}
+                disabled={!novoComentario.trim()}
+                style={{
+                  marginTop: "10px",
+                  padding: "10px 20px",
+                  backgroundColor: "#3498db",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                Enviar
+              </button>
+            </div>
+          )}
+
+          {comentarios.map((comentario) => (
+            <div
+              key={comentario.id}
+              style={{
+                backgroundColor: "#f9f9f9",
+                padding: "15px",
+                borderRadius: "8px",
+                marginBottom: "15px",
+                border: "1px solid #eee",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  marginBottom: "10px",
+                }}
+              >
+                {renderFotoPerfil(
+                  comentario.usuario_foto,
+                  comentario.usuario_nome,
+                  "36px"
+                )}
+                <div>
+                  <p style={{ margin: 0, fontWeight: "600", fontSize: "14px" }}>
+                    {comentario.usuario_nome}
+                  </p>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#7f8c8d" }}>
+                    @{comentario.usuario_nome_usuario}
+                  </p>
+                </div>
+              </div>
+              <p
+                style={{
+                  margin: "10px 0",
+                  color: "#333",
+                  lineHeight: "1.5",
+                }}
+              >
+                {comentario.mensagem}
+              </p>
+
+              {estaAtivo && usuario?.tipo === "proponente" && (
+                <button
+                  onClick={() => setComentarioRespondendo(comentario.id)}
+                  style={{
+                    padding: "6px 12px",
+                    backgroundColor: "#e8e8e8",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "500",
+                  }}
+                >
+                  Responder
+                </button>
+              )}
+
+              {comentarioRespondendo === comentario.id && (
+                <div style={{ marginTop: "10px" }}>
+                  <textarea
+                    value={textoResposta}
+                    onChange={(e) => setTextoResposta(e.target.value)}
+                    placeholder="Escreva sua resposta..."
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: "1px solid #ddd",
+                      fontSize: "13px",
+                      fontFamily: "inherit",
+                      minHeight: "60px",
+                      resize: "vertical",
+                    }}
+                  />
+                  <div
+                    style={{ marginTop: "8px", display: "flex", gap: "8px" }}
+                  >
                     <button
-                      onClick={() =>
-                        setComentarioRespondendo(
-                          comentarioRespondendo === comentario.id
-                            ? null
-                            : comentario.id
-                        )
-                      }
+                      onClick={() => handleEnviarResposta(comentario.id)}
                       style={{
-                        backgroundColor: "transparent",
+                        padding: "8px 16px",
+                        backgroundColor: "#3498db",
+                        color: "white",
                         border: "none",
-                        color: "#3498db",
+                        borderRadius: "6px",
                         cursor: "pointer",
-                        fontSize: "13px",
                         fontWeight: "600",
-                        padding: "4px 0",
+                        fontSize: "12px",
                       }}
-                      disabled={enviandoComentario}
                     >
-                      {comentarioRespondendo === comentario.id
-                        ? "Cancelar"
-                        : "Responder Comentário"}
+                      Enviar
                     </button>
-                  )}
+                    <button
+                      onClick={() => {
+                        setComentarioRespondendo(null);
+                        setTextoResposta("");
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#e8e8e8",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                  {comentarioRespondendo === comentario.id && (
-                    <div style={{ marginTop: "12px", paddingLeft: "20px" }}>
-                      <textarea
-                        value={textoResposta}
-                        onChange={(e) => {
-                          if (e.target.value.length <= 250) {
-                            setTextoResposta(e.target.value);
-                          }
-                        }}
-                        maxLength="250"
-                        placeholder="Escreva sua resposta..."
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          border: "2px solid #e0e0e0",
-                          borderRadius: "6px",
-                          fontSize: "13px",
-                          minHeight: "70px",
-                          boxSizing: "border-box",
-                          resize: "vertical",
-                          fontFamily: "inherit",
-                        }}
-                        disabled={enviandoComentario}
-                      />
+              {comentario.respostas && comentario.respostas.length > 0 && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    borderLeft: "2px solid #ddd",
+                    paddingLeft: "12px",
+                  }}
+                >
+                  {comentario.respostas.map((resposta) => (
+                    <div key={resposta.id} style={{ marginBottom: "10px" }}>
                       <div
                         style={{
                           display: "flex",
-                          justifyContent: "space-between",
-                          marginTop: "6px",
+                          alignItems: "center",
+                          gap: "8px",
+                          marginBottom: "6px",
                         }}
                       >
-                        <small
-                          style={{
-                            color:
-                              textoResposta.length === 250
-                                ? "#e74c3c"
-                                : "#7f8c8d",
-                          }}
-                        >
-                          {textoResposta.length}/250
-                        </small>
-                        <button
-                          onClick={() => handleEnviarResposta(comentario.id)}
-                          disabled={enviandoComentario || !textoResposta.trim()}
-                          style={{
-                            padding: "8px 16px",
-                            backgroundColor: enviandoComentario
-                              ? "#95a5a6"
-                              : "#3498db",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "5px",
-                            cursor:
-                              enviandoComentario || !textoResposta.trim()
-                                ? "not-allowed"
-                                : "pointer",
-                            fontSize: "13px",
-                            fontWeight: "600",
-                            opacity: !textoResposta.trim() ? 0.5 : 1,
-                          }}
-                        >
-                          {enviandoComentario
-                            ? "Enviando..."
-                            : "Enviar Resposta"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {comentario.respostas &&
-                    comentario.respostas.map((resposta) => (
-                      <div
-                        key={resposta.id}
-                        style={{
-                          backgroundColor: "white",
-                          padding: "15px",
-                          borderRadius: "6px",
-                          marginTop: "12px",
-                          marginLeft: "25px",
-                          borderLeft: "3px solid #e0e0e0",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: "10px",
-                          }}
-                        >
-                          <div
-                            style={{ cursor: "pointer" }}
-                            onClick={() =>
-                              navigate(
-                                `/perfil/@${resposta.usuario_nome_usuario}`
-                              )
-                            }
+                        {renderFotoPerfil(
+                          resposta.usuario_foto,
+                          resposta.usuario_nome,
+                          "32px"
+                        )}
+                        <div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontWeight: "600",
+                              fontSize: "13px",
+                            }}
                           >
-                            {renderFotoPerfil(
-                              resposta.usuario_foto,
-                              resposta.usuario_nome,
-                              "35px"
-                            )}
-                          </div>
-                          <div>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontWeight: "600",
-                                fontSize: "14px",
-                              }}
-                            >
-                              {resposta.usuario_nome}
-                            </p>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: "11px",
-                                color: "#888",
-                              }}
-                            >
-                              {new Date(resposta.criado_em).toLocaleString(
-                                "pt-BR"
-                              )}
-                            </p>
-                          </div>
+                            {resposta.usuario_nome}
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "11px",
+                              color: "#7f8c8d",
+                            }}
+                          >
+                            @{resposta.usuario_nome_usuario}
+                          </p>
                         </div>
-                        <p
-                          style={{ margin: 0, color: "#555", fontSize: "14px" }}
-                        >
-                          {resposta.mensagem}
-                        </p>
                       </div>
-                    ))}
+                      <p
+                        style={{
+                          margin: "6px 0",
+                          color: "#555",
+                          fontSize: "13px",
+                          lineHeight: "1.4",
+                        }}
+                      >
+                        {resposta.mensagem}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))
-            )}
-          </div>
+              )}
+            </div>
+          ))}
         </div>
       </main>
       <Footer />
 
       {mostraModal && (
-        <Modal desafioId={id} onClose={() => setMostraModal(false)} />
+        <Modal
+          desafioId={id}
+          fecharModal={() => setMostraModal(false)}
+          onPropostaEnviada={() => {
+            setMostraModal(false);
+            const response = api.get(`/desafios/${id}`);
+            response.then((res) => {
+              setDesafio(res.data.desafio);
+            });
+          }}
+        />
       )}
     </div>
   );

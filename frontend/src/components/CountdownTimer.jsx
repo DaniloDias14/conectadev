@@ -17,13 +17,6 @@ export default function CountdownTimer({
       const diferencaMs = expiracao.getTime() - agora.getTime();
       const diferencaSegundos = Math.floor(diferencaMs / 1000);
 
-      console.log("[v0] Timer debug:", {
-        agora: agora.toISOString(),
-        expiracao: expiracao.toISOString(),
-        diferencaMs,
-        diferencaSegundos,
-      });
-
       if (diferencaSegundos <= 0) {
         if (!expirou) {
           console.log("[v0] Desafio expirado, chamando onExpire");

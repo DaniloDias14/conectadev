@@ -33,6 +33,13 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Primeiro, atualizar status de desafios que expiraram
+    await pool.query(
+      `UPDATE desafios SET status = 'expirado' 
+       WHERE status = 'ativo' AND expira_em < NOW() AND id = $1`,
+      [id]
+    );
+
     const desafioResultado = await pool.query(
       `SELECT d.*, u.nome as usuario_nome, u.foto_perfil as usuario_foto, u.nome_usuario,
        (SELECT MIN(valor) FROM propostas WHERE desafio_id = d.id) as menor_proposta,
@@ -225,7 +232,7 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Escolher vencedor
-router.post("/:id/escolher-vencedor", async (req, res) => {
+router.post("/:id/escolher-vencedor", autenticar, async (req, res) => {
   try {
     const { id } = req.params;
     const { propostaId } = req.body;
@@ -336,10 +343,18 @@ router.get("/meus-desafios", autenticar, async (req, res) => {
   }
 });
 
-router.get("/:id/propostas", async (req, res) => {
+// Listar propostas de um desafio (APENAS O DONO DO DESAFIO)
+router.get("/:id/propostas", autenticar, async (req, res) => {
   try {
     const { id } = req.params;
     const usuarioId = req.usuario.id;
+
+    console.log(
+      "[v0] Carregando propostas. Desafio ID:",
+      id,
+      "Usuário ID:",
+      usuarioId
+    );
 
     // Verificar se é o dono do desafio
     const desafioResultado = await pool.query(
@@ -348,10 +363,20 @@ router.get("/:id/propostas", async (req, res) => {
     );
 
     if (desafioResultado.rows.length === 0) {
+      console.log("[v0] Desafio não encontrado:", id);
       return res.status(404).json({ mensagem: "Desafio não encontrado" });
     }
 
-    if (desafioResultado.rows[0].usuario_id !== usuarioId) {
+    const donoDosafio = desafioResultado.rows[0].usuario_id;
+    console.log(
+      "[v0] Dono do desafio:",
+      donoDosafio,
+      "Usuário requisitando:",
+      usuarioId
+    );
+
+    if (donoDosafio !== usuarioId) {
+      console.log("[v0] Usuário não tem permissão");
       return res
         .status(403)
         .json({ mensagem: "Sem permissão para ver as propostas" });
@@ -366,6 +391,7 @@ router.get("/:id/propostas", async (req, res) => {
       [id]
     );
 
+    console.log("[v0] Propostas encontradas:", resultado.rows.length);
     res.json({ propostas: resultado.rows });
   } catch (erro) {
     console.error("[v0] Erro ao listar propostas:", erro);
