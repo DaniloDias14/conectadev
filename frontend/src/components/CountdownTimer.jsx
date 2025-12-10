@@ -19,7 +19,6 @@ export default function CountdownTimer({
 
       if (diferencaSegundos <= 0) {
         if (!expirou) {
-          console.log("[v0] Desafio expirado, chamando onExpire");
           setExpirou(true);
           setTempoRestante(null);
           if (onExpire) onExpire();
@@ -74,12 +73,9 @@ export default function CountdownTimer({
   };
 
   const formatarTempo = () => {
-    if (tempoRestante.horas > 0) {
-      return `⏱ ${tempoRestante.horas}h ${tempoRestante.minutos}m ${tempoRestante.segundos}s`;
-    }
-    return `⏱ ${tempoRestante.minutos}:${tempoRestante.segundos
-      .toString()
-      .padStart(2, "0")}`;
+    const totalMinutos = tempoRestante.horas * 60 + tempoRestante.minutos;
+    const segundos = tempoRestante.segundos;
+    return `⏱ ${totalMinutos}m ${segundos.toString().padStart(2, "0")}s`;
   };
 
   return <span style={styles[tamanho]}>{formatarTempo()}</span>;

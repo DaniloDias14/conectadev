@@ -24,92 +24,52 @@ export default function DetalhesDesafio() {
   const [mostrarPropostas, setMostrarPropostas] = useState(false);
   const [desafioExpirado, setDesafioExpirado] = useState(false);
   const [carregandoPropostas, setCarregandoPropostas] = useState(false);
+  const [usuarioJaTemProposta, setUsuarioJaTemProposta] = useState(false);
   const { usuario, token } = useContext(AuthContext);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    const carregarDesafio = async () => {
+    const carregarDados = async () => {
       try {
-        console.log("[v0] Carregando desafio ID:", id);
-        const response = await api.get(`/desafios/${id}`);
-        const desafioData = response.data.desafio;
-        setDesafio(desafioData);
-        setComentarios(response.data.comentarios || []);
+        setCarregando(true);
 
-        console.log("[v0] Desafio carregado. Status:", desafioData.status);
-        console.log("[v0] Desafio expira em:", desafioData.expira_em);
-        console.log("[v0] Agora é:", new Date().toISOString());
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const resDesafio = await api.get(`/desafios/${id}`);
+        const desafioData = resDesafio.data.desafio;
+        setDesafio(desafioData);
+        setComentarios(resDesafio.data.comentarios || []);
 
         const estaExpirado = new Date(desafioData.expira_em) < new Date();
-        console.log("[v0] Está expirado?", estaExpirado);
-
         if (estaExpirado) {
           setDesafioExpirado(true);
-          console.log("[v0] Desafio está expirado");
+        }
+
+        if (usuario && usuario.tipo === "proponente") {
+          try {
+            const resPropostas = await api.get(`/desafios/${id}/propostas`);
+            const jaTemProposta = resPropostas.data.some(
+              (p) => p.usuario_id === usuario.id
+            );
+            setUsuarioJaTemProposta(jaTemProposta);
+          } catch (err) {
+            console.error("Erro ao verificar propostas:", err);
+            setUsuarioJaTemProposta(false);
+          }
         }
       } catch (err) {
         console.error("[v0] Erro ao carregar desafio:", err);
-        setErro("Desafio não encontrado");
+        setErro("Erro ao carregar desafio");
       } finally {
         setCarregando(false);
       }
     };
 
-    carregarDesafio();
-  }, [id, token, navigate]);
-
-  useEffect(() => {
-    const carregarPropostasSeNecessario = async () => {
-      if (!desafio || !usuario) return;
-
-      const estaExpirado = new Date(desafio.expira_em) < new Date();
-      const ehDono = desafio.usuario_id === usuario.id;
-      const ehContratante = usuario.tipo === "contratante";
-
-      console.log("[v0] Verificando se deve carregar propostas...");
-      console.log("[v0] Expirado?", estaExpirado);
-      console.log("[v0] É dono?", ehDono);
-      console.log("[v0] É contratante?", ehContratante);
-      console.log("[v0] Propostas já carregadas?", propostas.length > 0);
-
-      if (estaExpirado && ehDono && ehContratante && propostas.length === 0) {
-        console.log("[v0] Carregando propostas...");
-        await carregarPropostas();
-      }
-    };
-
-    carregarPropostasSeNecessario();
-  }, [desafio, usuario, propostas.length]);
-
-  const carregarPropostas = async () => {
-    if (carregandoPropostas) return;
-
-    setCarregandoPropostas(true);
-    try {
-      console.log("[v0] Requisição GET /desafios/" + id + "/propostas");
-      const response = await api.get(`/desafios/${id}/propostas`);
-      const propostasData = response.data.propostas || [];
-      console.log(
-        "[v0] Propostas carregadas com sucesso:",
-        propostasData.length
-      );
-      setPropostas(propostasData);
-    } catch (err) {
-      console.error(
-        "[v0] Erro ao carregar propostas:",
-        err.response?.data || err.message
-      );
-      setErro(err.response?.data?.mensagem || "Erro ao carregar propostas");
-      setPropostas([]);
-    } finally {
-      setCarregandoPropostas(false);
-    }
-  };
+    carregarDados();
+  }, [id, usuario]);
 
   const handleEnviarComentario = async () => {
     if (!novoComentario.trim()) return;
@@ -192,6 +152,39 @@ export default function DetalhesDesafio() {
       console.log("[v0] Desafio atualizado após expiração");
     } catch (err) {
       console.error("[v0] Erro ao recarregar desafio:", err);
+    }
+  };
+
+  const handleAbrirModalProposta = () => {
+    if (usuarioJaTemProposta) {
+      alert("Você já enviou uma proposta para este desafio!");
+      return;
+    }
+    setMostraModal(true);
+  };
+
+  const carregarPropostas = async () => {
+    if (carregandoPropostas) return;
+
+    setCarregandoPropostas(true);
+    try {
+      console.log("[v0] Requisição GET /desafios/" + id + "/propostas");
+      const response = await api.get(`/desafios/${id}/propostas`);
+      const propostasData = response.data.propostas || [];
+      console.log(
+        "[v0] Propostas carregadas com sucesso:",
+        propostasData.length
+      );
+      setPropostas(propostasData);
+    } catch (err) {
+      console.error(
+        "[v0] Erro ao carregar propostas:",
+        err.response?.data || err.message
+      );
+      setErro(err.response?.data?.mensagem || "Erro ao carregar propostas");
+      setPropostas([]);
+    } finally {
+      setCarregandoPropostas(false);
     }
   };
 
@@ -636,7 +629,7 @@ export default function DetalhesDesafio() {
 
           {usuario?.tipo === "proponente" && estaAtivo && (
             <button
-              onClick={() => setMostraModal(true)}
+              onClick={handleAbrirModalProposta}
               style={{
                 padding: "14px 28px",
                 backgroundColor: "#3498db",
@@ -1176,13 +1169,9 @@ export default function DetalhesDesafio() {
       {mostraModal && (
         <Modal
           desafioId={id}
-          fecharModal={() => setMostraModal(false)}
-          onPropostaEnviada={() => {
+          fecharModal={() => {
             setMostraModal(false);
-            const response = api.get(`/desafios/${id}`);
-            response.then((res) => {
-              setDesafio(res.data.desafio);
-            });
+            window.location.reload();
           }}
         />
       )}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import api from "../services/api";
 
-export default function Modal({ desafioId, onClose }) {
+export default function Modal({ desafioId, onClose, fecharModal }) {
   const [valor, setValor] = useState("");
   const [justificativa, setJustificativa] = useState("");
   const [prazo, setPrazo] = useState("");
@@ -53,13 +53,19 @@ export default function Modal({ desafioId, onClose }) {
         prazo_estimado: Number.parseInt(prazo),
       });
 
-      alert("Proposta enviada com sucesso!");
-      onClose();
+      if (typeof fecharModal === "function") {
+        fecharModal();
+      }
     } catch (err) {
-      console.error("[v0] Erro ao enviar proposta:", err);
+      console.error("Erro ao enviar proposta:", err);
       setErro(err.response?.data?.mensagem || "Erro ao enviar proposta");
-    } finally {
       setCarregando(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (typeof fecharModal === "function") {
+      fecharModal();
     }
   };
 
@@ -99,7 +105,7 @@ export default function Modal({ desafioId, onClose }) {
         >
           <h2 style={{ margin: 0 }}>Enviar Proposta</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               backgroundColor: "transparent",
               border: "none",
@@ -250,7 +256,7 @@ export default function Modal({ desafioId, onClose }) {
             </button>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               style={{
                 flex: 1,
                 padding: "12px",
